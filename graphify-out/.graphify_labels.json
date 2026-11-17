@@ -26,11 +26,19 @@
   "24": "catalogImport.ts",
   "25": "Updater",
   "26": "opponents.ts",
+  "27": "decodePlayerInfo",
+  "28": "history.ts",
   "29": "Wydawanie aktualizacji (GitHub Releases)",
   "30": "petTrackerImport.ts",
+  "31": "opcodes.ts",
   "32": "index.ts",
   "33": "gen-pet-assets.py",
   "34": "gen-pet-data.py",
   "35": "eslint.config.mjs",
-  "36": "env.d.ts"
+  "36": "env.d.ts",
+  "37": "App.tsx",
+  "38": "settings.test.ts",
+  "39": "ControlApp.tsx",
+  "40": "fpsAccess.ts",
+  "41": "Panel.tsx"
 }

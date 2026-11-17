@@ -21,6 +21,12 @@ export function App() {
   const [detail, setDetail] = useState<{ name: string; source: string } | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [petsOpen, setPetsOpen] = useState(false);
+  const rootRef = useRef<HTMLElement>(null);
+  const bgOpacity = snap?.settings.opacity;
+  useEffect(() => {
+    // the opacity setting is the panels' background opacity; text and icons stay fully visible
+    if (bgOpacity !== undefined) rootRef.current?.style.setProperty('--bg-alpha', String(bgOpacity));
+  }, [bgOpacity]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [encounterId, setEncounterId] = useState<string | null>(null);
   useEffect(() => window.overlay.onSnapshot(setSnap), []);
@@ -65,7 +71,7 @@ export function App() {
   return (
     <div className="relative h-full">
       <ViewContext.Provider value={{ visible: snap.visible, shown: toolbarShown, opacity: snap.settings.opacity }}>
-      <main className="overlay-root relative h-full">
+      <main ref={rootRef} className="overlay-root relative h-full">
         <h1 className="sr-only">Aion Assist</h1>
         <DailyPanel snap={snap} />
         <MeterPanel snap={snap} onDetail={(name, source) => setDetail({ name, source })} />

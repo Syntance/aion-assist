@@ -95,7 +95,7 @@ export function Toolbar({
     setDraft(null);
   };
   const step = (delta: number) =>
-    api.updateSettings({ opacity: Math.round(Math.min(1, Math.max(0.3, settings.opacity + delta)) * 100) / 100 });
+    api.updateSettings({ opacity: Math.round(Math.min(1, Math.max(0.05, settings.opacity + delta)) * 100) / 100 });
 
   return (
     <nav

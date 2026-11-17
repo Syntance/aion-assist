@@ -54,6 +54,10 @@ body {
 
 /* Overlay fade (auto-hide). Opacity only, so it stays cheap on top of the game. */
 .overlay-root {
+  /* the opacity setting dims only the backgrounds of the on-screen panels (text stays solid) */
+  --color-panel: oklch(0.2 0.028 245 / calc(0.92 * var(--bg-alpha, 1)));
+  --color-panel-head: oklch(0.155 0.026 245 / calc(0.96 * var(--bg-alpha, 1)));
+  --color-row: oklch(0.255 0.03 245 / calc(0.74 * var(--bg-alpha, 1)));
   transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 @media (prefers-reduced-motion: reduce) {

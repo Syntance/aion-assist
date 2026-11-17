@@ -39,6 +39,10 @@ const panelBase = z.object({
   x: z.number().min(0).max(10_000),
   y: z.number().min(0).max(10_000),
   w: z.number().min(220).max(900),
+  /** Zoom of the whole window (1 = normal). */
+  scale: z.number().min(0.5).max(2.5),
+  /** Fixed height (stretched downward; the list scrolls inside); null = as tall as the content. */
+  h: z.number().min(60).max(3000).nullable(),
   visible: z.boolean(),
   pinned: z.boolean(),
 });
@@ -47,6 +51,8 @@ const panelBase = z.object({
 const panelSchema = panelBase.extend({
   /** Pinned window ignores the cursor auto-hide: it stays while the game is in front. */
   pinned: z.boolean().default(false),
+  scale: z.number().min(0.5).max(2.5).default(1),
+  h: z.number().min(60).max(3000).nullable().default(null),
 });
 export type PanelLayout = z.infer<typeof panelSchema>;
 
@@ -57,10 +63,10 @@ export const settingsSchema = z.object({
     target: panelSchema,
     daily: panelSchema,
     // added later: older settings files lack it
-    nearby: panelSchema.default({ x: 740, y: 24, w: 320, visible: true, pinned: false }),
-    pets: panelSchema.default({ x: 1100, y: 220, w: 300, visible: true, pinned: false }),
+    nearby: panelSchema.default({ x: 740, y: 24, w: 320, scale: 1, h: null, visible: true, pinned: false }),
+    pets: panelSchema.default({ x: 1100, y: 220, w: 300, scale: 1, h: null, visible: true, pinned: false }),
   }),
-  opacity: z.number().min(0.3).max(1),
+  opacity: z.number().min(0.05).max(1),
   /** Hide the overlay while the system cursor is visible (in-game menus). */
   hideOnCursor: z.boolean(),
   /** Case-insensitive substring of the game window title. */
@@ -84,6 +90,8 @@ export const settingsSchema = z.object({
   /** Detailed log lines (event counts, timings) in app.log. */
   debugLog: z.boolean().default(false),
   /** The "you died" pop-up (who killed you, K/D buttons) and when it closes: after a respawn, or only by hand. */
+  /** Most players listed per side in the DPS / PvP window (0 = no limit): in mass PvP only the top ones show. */
+  maxPlayerRows: z.number().int().min(0).max(100).default(10),
   deathPopup: z.boolean().default(true),
   deathPopupClose: z.enum(['respawn', 'manual']).default('respawn'),
   /** Record raw game packets to raw_tcp_ours.log (needs a restart; large file, advanced). */
@@ -119,12 +127,12 @@ export type PanelPatch = z.infer<typeof panelPatchSchema>;
 
 export const DEFAULT_SETTINGS: Settings = {
   panels: {
-    meter: { x: 24, y: 220, w: 360, visible: true, pinned: false },
-    pvp: { x: 24, y: 540, w: 380, visible: true, pinned: false },
-    target: { x: 420, y: 24, w: 300, visible: true, pinned: false },
-    daily: { x: 24, y: 24, w: 260, visible: true, pinned: false },
-    nearby: { x: 740, y: 24, w: 320, visible: true, pinned: false },
-    pets: { x: 1100, y: 220, w: 300, visible: true, pinned: false },
+    meter: { x: 24, y: 220, w: 360, scale: 1, h: null, visible: true, pinned: false },
+    pvp: { x: 24, y: 540, w: 380, scale: 1, h: null, visible: true, pinned: false },
+    target: { x: 420, y: 24, w: 300, scale: 1, h: null, visible: true, pinned: false },
+    daily: { x: 24, y: 24, w: 260, scale: 1, h: null, visible: true, pinned: false },
+    nearby: { x: 740, y: 24, w: 320, scale: 1, h: null, visible: true, pinned: false },
+    pets: { x: 1100, y: 220, w: 300, scale: 1, h: null, visible: true, pinned: false },
   },
   opacity: 0.94,
   hideOnCursor: true,
@@ -140,6 +148,7 @@ export const DEFAULT_SETTINGS: Settings = {
   petsHideMaxed: true,
   autoUpdate: true,
   debugLog: false,
+  maxPlayerRows: 10,
   deathPopup: true,
   deathPopupClose: 'respawn',
   rawCapture: false,

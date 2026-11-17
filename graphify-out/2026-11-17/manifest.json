@@ -5,8 +5,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1794949461.6760614,
-    "ast_hash": "f707da43d3ef297b34e1b1096c0c1fba",
+    "mtime": 1794951501.2580383,
+    "ast_hash": "26fcf2a0bad0633d81554d3c0d7e1f54",
     "semantic_hash": ""
   },
   "src/capture/index.ts": {
@@ -60,8 +60,8 @@
     "semantic_hash": ""
   },
   "src/core/engine/engine.ts": {
-    "mtime": 1794933012.0269408,
-    "ast_hash": "e59f2ffe9905264542f980acde610ca3",
+    "mtime": 1794951486.5810037,
+    "ast_hash": "1ebac27042090c9547abc1b1cf8c9e99",
     "semantic_hash": ""
   },
   "src/core/pets/petBook.ts": {
@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "src/main/index.ts": {
-    "mtime": 1794949438.9659052,
-    "ast_hash": "21c3e7b2fb0b7b4c02e08445f10bb67d",
+    "mtime": 1794951486.5818512,
+    "ast_hash": "e10903b35cc8ab719013fa50d2b73325",
     "semantic_hash": ""
   },
   "src/main/petStore.ts": {
@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "src/renderer/src/components/ClassIcon.tsx": {
-    "mtime": 1794475407.3846622,
-    "ast_hash": "aff0035acc06146edf5aeb00a9cf822e",
+    "mtime": 1794951127.9806864,
+    "ast_hash": "a61ddbb9a21e86dea0ef5e693a2fe482",
     "semantic_hash": ""
   },
   "src/renderer/src/components/DeathPopup.tsx": {
@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/renderer/src/components/Settings.tsx": {
-    "mtime": 1794949438.9654026,
-    "ast_hash": "98d2d5e4104d077dcbf7190eddea2209",
+    "mtime": 1794951486.5946195,
+    "ast_hash": "68bdbe3d5426b5d86a9bc2c3878a372e",
     "semantic_hash": ""
   },
   "src/renderer/src/components/Toolbar.tsx": {
@@ -305,8 +305,8 @@
     "semantic_hash": ""
   },
   "src/shared/types.ts": {
-    "mtime": 1794949417.1670008,
-    "ast_hash": "0eb375a8634135fd34c920293ee0e98b",
+    "mtime": 1794951486.5941167,
+    "ast_hash": "ba1b99b0fcbf7f886227d2e1d7b518d5",
     "semantic_hash": ""
   },
   "tests/abyss-replay.test.ts": {
@@ -360,8 +360,8 @@
     "semantic_hash": ""
   },
   "tests/killfeed.test.ts": {
-    "mtime": 1794933017.1992338,
-    "ast_hash": "1a318b07e6fc994cce1ff1b5ef49f1c1",
+    "mtime": 1794951486.595122,
+    "ast_hash": "d2cc4b15fcffe33674c17a456c548512",
     "semantic_hash": ""
   },
   "tests/opponents.test.ts": {
@@ -437,6 +437,11 @@
   "tests/log.test.ts": {
     "mtime": 1794949454.8973048,
     "ast_hash": "c769d0af7bfa99f3bdd218ff6e8b8213",
+    "semantic_hash": ""
+  },
+  "tools/gen-class-icons.py": {
+    "mtime": 1794950988.3969088,
+    "ast_hash": "5ff06e463c828a8fc515d1c0d8c98b5e",
     "semantic_hash": ""
   }
 }

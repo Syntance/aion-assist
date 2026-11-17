@@ -107,12 +107,12 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
       </Section>
       <ClassLegend />
       <Section title="Przezroczystość">
-        <Row title="Krycie okien" hint="Dotyczy okien z licznikami. Pasek, historia i ustawienia zawsze są w pełni widoczne.">
+        <Row title="Krycie okien" hint="Przyciemnia tylko tło okien z licznikami (do 5%); napisy i ikony zostają w pełni widoczne. Pasek, historia i ustawienia zawsze mają pełne tło.">
           <span className="flex items-center gap-2.5">
             <input
               type="range"
               aria-label="Krycie"
-              min={0.3}
+              min={0.05}
               max={1}
               step={0.02}
               value={settings.opacity}
@@ -288,6 +288,16 @@ function Behavior({ snap }: { snap: OverlaySnapshot }) {
         </Row>
       </Section>
       <Section title="Liczniki">
+        <Row title="Maks. graczy na liście" hint="Ile graczy pokazuje okno DPS/PvP naraz na każdej liście (po stronie twojej i przeciwników). Przy masowym PvP zostają ci z największymi obrażeniami, a ty zawsze jesteś na liście. Sumy i paski liczą wszystkich graczy.">
+          <select className={`${control} w-24`} aria-label="Maksymalna liczba graczy na liście" value={settings.maxPlayerRows} onChange={(e) => api.updateSettings({ maxPlayerRows: Number(e.target.value) })}>
+            {[3, 5, 8, 10, 15, 20, 30, 50].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+            <option value={0}>Bez limitu</option>
+          </select>
+        </Row>
         <Row title="Wyzeruj DPS" hint="Czyści bieżącą walkę w liczniku bossów.">
           <button type="button" className={button} onClick={() => api.resetMeter()}>
             Wyzeruj

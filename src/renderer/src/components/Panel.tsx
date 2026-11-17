@@ -18,26 +18,30 @@ interface Props {
   children: ReactNode;
 }
 
-type Drag = { kind: 'move' | 'resize'; startX: number; startY: number; origin: PanelLayout };
+type Drag = { kind: 'move' | 'resize' | 'height' | 'scale'; startX: number; startY: number; origin: PanelLayout };
+
+const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /** A movable / resizable overlay panel. Dragging only works in edit mode. */
 export function Panel({ id, title, layout, editMode, aside, lead, sub, children }: Props) {
   const [draft, setDraft] = useState<PanelLayout | null>(null);
   const drag = useRef<Drag | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const shown = draft ?? layout;
   const view = useContext(ViewContext);
   const on = layout.pinned ? view.shown : view.visible;
 
   const begin = (kind: Drag['kind']) => (e: PointerEvent<HTMLElement>) => {
-    // The header always drags the window; the width handle only exists in layout-edit mode.
-    if (kind === 'resize' && !editMode) return;
+    // The header always drags the window; the size handles only exist in layout-edit mode.
+    if (kind !== 'move' && !editMode) return;
     if (!on || e.button !== 0) return;
     // buttons, inputs and links inside the header keep their own clicks
     if (e.target instanceof Element && e.target.closest('button, input, select, a, [data-nodrag]')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     window.overlay.setMouseCapture(true); // keep catching the mouse for the whole drag
-    drag.current = { kind, startX: e.clientX, startY: e.clientY, origin: layout };
-    setDraft(layout);
+    const origin = kind === 'height' ? { ...layout, h: layout.h ?? sectionRef.current?.offsetHeight ?? 200 } : layout;
+    drag.current = { kind, startX: e.clientX, startY: e.clientY, origin };
+    setDraft(origin);
   };
 
   const move = (e: PointerEvent<HTMLElement>) => {
@@ -45,23 +49,27 @@ export function Panel({ id, title, layout, editMode, aside, lead, sub, children 
     if (!d) return;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
-    setDraft(
-      d.kind === 'move'
-        ? {
-            ...d.origin,
-            x: Math.min(Math.max(0, d.origin.x + dx), window.innerWidth - 80),
-            y: Math.min(Math.max(0, d.origin.y + dy), window.innerHeight - 40),
-          }
-        : { ...d.origin, w: Math.min(Math.max(220, d.origin.w + dx), 900) },
-    );
+    const s = d.origin.scale; // the window is drawn scaled: screen pixels -> window pixels
+    if (d.kind === 'move') {
+      setDraft({ ...d.origin, x: Math.min(Math.max(0, d.origin.x + dx), window.innerWidth - 80), y: Math.min(Math.max(0, d.origin.y + dy), window.innerHeight - 40) });
+    } else if (d.kind === 'resize') {
+      setDraft({ ...d.origin, w: Math.min(Math.max(220, d.origin.w + dx / s), 900) });
+    } else if (d.kind === 'height') {
+      setDraft({ ...d.origin, h: Math.min(Math.max(60, (d.origin.h ?? 200) + dy / s), 3000) });
+    } else {
+      setDraft({ ...d.origin, scale: Math.min(Math.max(0.5, d.origin.scale * (1 + (dx + dy) / 600)), 2.5) });
+    }
   };
 
   const end = () => {
     if (!drag.current) return;
     drag.current = null;
     window.overlay.setMouseCapture(false);
-    if (draft && (draft.x !== layout.x || draft.y !== layout.y || draft.w !== layout.w)) {
-      window.overlay.updatePanel({ id, layout: { x: Math.round(draft.x), y: Math.round(draft.y), w: Math.round(draft.w) } });
+    if (draft && (draft.x !== layout.x || draft.y !== layout.y || draft.w !== layout.w || draft.h !== layout.h || draft.scale !== layout.scale)) {
+      window.overlay.updatePanel({
+        id,
+        layout: { x: Math.round(draft.x), y: Math.round(draft.y), w: Math.round(draft.w), h: draft.h === null ? null : Math.round(draft.h), scale: round2(draft.scale) },
+      });
     }
     setDraft(null);
   };
@@ -80,14 +88,15 @@ export function Panel({ id, title, layout, editMode, aside, lead, sub, children 
     <section
       data-hit={layout.pinned ? 'panel-pinned' : 'panel'}
       aria-label={title}
+      ref={sectionRef}
       aria-hidden={!on}
-      className={`absolute overflow-hidden rounded-[12px] bg-panel shadow-[0_8px_28px_oklch(0.1_0.02_255/0.55)] ring-1 ${
+      className={`absolute flex flex-col overflow-hidden rounded-[12px] bg-panel shadow-[0_8px_28px_oklch(0.1_0.02_255/0.55)] ring-1 ${
         editMode ? 'ring-accent/80' : 'ring-line'
       }`}
-      style={{ transform: `translate(${shown.x}px, ${shown.y}px)`, width: shown.w, opacity: on ? view.opacity : 0, pointerEvents: on ? undefined : 'none' }}
+      style={{ transform: `translate(${shown.x}px, ${shown.y}px) scale(${shown.scale})`, transformOrigin: '0 0', width: shown.w, height: shown.h ?? undefined, opacity: on ? 1 : 0, pointerEvents: on ? undefined : 'none' }}
     >
       <header
-        className={`flex h-[34px] items-center gap-2 border-b border-line/50 bg-panel-head px-3 cursor-grab touch-none active:cursor-grabbing`}
+        className={`flex h-[34px] shrink-0 items-center gap-2 border-b border-line/50 bg-panel-head px-3 cursor-grab touch-none active:cursor-grabbing`}
         onPointerDown={begin('move')}
         onPointerMove={move}
         onPointerUp={end}
@@ -111,18 +120,49 @@ export function Panel({ id, title, layout, editMode, aside, lead, sub, children 
           </svg>
         </button>
       </header>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-color:var(--color-line)_transparent] [scrollbar-width:thin]">{children}</div>
       {editMode && (
-        <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label={`Zmień szerokość: ${title}`}
-          className="absolute inset-y-0 right-0 w-2 cursor-ew-resize touch-none bg-accent/50"
-          onPointerDown={begin('resize')}
-          onPointerMove={move}
-          onPointerUp={end}
-          onPointerCancel={end}
-        />
+        <>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={`Zmień szerokość: ${title}`}
+            title="Przeciągnij: szerokość okna"
+            className="absolute inset-y-0 right-0 w-2 cursor-ew-resize touch-none bg-accent/50"
+            onPointerDown={begin('resize')}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerCancel={end}
+          />
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label={`Rozciągnij w dół: ${title}`}
+            title="Przeciągnij: wysokość okna (dwuklik: wysokość automatyczna)"
+            className="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize touch-none bg-accent/50"
+            onPointerDown={begin('height')}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerCancel={end}
+            onDoubleClick={() => window.overlay.updatePanel({ id, layout: { h: null } })}
+          />
+          <div
+            role="slider"
+            aria-label={`Skala okna: ${title}`}
+            aria-valuemin={50}
+            aria-valuemax={250}
+            aria-valuenow={Math.round(shown.scale * 100)}
+            title="Przeciągnij: powiększenie okna (dwuklik: 100%)"
+            className="absolute bottom-0 right-0 z-10 grid size-4 cursor-nwse-resize touch-none place-items-center rounded-tl-[6px] bg-accent text-[8px] font-bold text-panel-head"
+            onPointerDown={begin('scale')}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerCancel={end}
+            onDoubleClick={() => window.overlay.updatePanel({ id, layout: { scale: 1 } })}
+          >
+            ⤡
+          </div>
+        </>
       )}
     </section>
   );

@@ -214,9 +214,24 @@ function ModeSwitch({
   );
 }
 
+/** The top `max` rows (0 = all); you always stay on the list, taking the last slot when you rank lower. */
+function limitRows<T extends { isSelf: boolean }>(rows: readonly T[], max: number): { shown: T[]; hidden: number } {
+  if (max <= 0 || rows.length <= max) return { shown: [...rows], hidden: 0 };
+  const shown = rows.slice(0, max);
+  const me = rows.find((r) => r.isSelf);
+  if (me && !shown.includes(me)) shown[max - 1] = me;
+  return { shown, hidden: rows.length - max };
+}
+
+function MoreRows({ hidden }: { hidden: number }) {
+  if (hidden <= 0) return null;
+  return <li className="num px-2 py-0.5 text-center text-[10px] text-ink-mute">+{hidden} więcej (limit listy w ustawieniach)</li>;
+}
+
 export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: string, source: string) => void }) {
   const { meter, capture, daily, self, pvp } = snap;
   const top = meter.rows[0]?.damage ?? 0;
+  const meterList = limitRows(meter.rows, snap.settings.maxPlayerRows);
   const lobbyTab = snap.settings.showLobby;
   const lobby = snap.lobby && snap.lobby.members.length > 1 ? snap.lobby : null;
   const [mode, setMode] = useState<MeterMode>('boss');
@@ -284,7 +299,7 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
             </Empty>
           ) : (
             <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
-              {meter.rows.map((row) => (
+              {meterList.shown.map((row) => (
                 <PlayerRow
                   key={row.card.name}
                   card={row.card}
@@ -305,11 +320,12 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
                   }
                 />
               ))}
+              <MoreRows hidden={meterList.hidden} />
             </ol>
           )}
         </>
       )}
-      <footer className="num flex items-center gap-3 border-t border-line bg-panel-head px-2.5 py-1.5 text-[11px] text-ink-dim">
+      <footer className="num mt-auto flex items-center gap-3 border-t border-line bg-panel-head px-2.5 py-1.5 text-[11px] text-ink-dim">
         <span className="truncate font-semibold text-self">{self?.name ?? '—'}</span>
         <span title="Abyss Points zdobyte dzisiaj">AP {signed(daily.apGained)}</span>
         {snap.settings.showPing && <PingBadge ping={snap.ping} />}
@@ -339,6 +355,8 @@ function RecordBadge({ record }: { record: RivalRecord | null }) {
 /** PvP view inside the DPS window: both sides of the current player fight. */
 function PvpBody({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: string, source: string) => void }) {
   const { pvp } = snap;
+  const mineList = limitRows(pvp.mine, snap.settings.maxPlayerRows);
+  const theirsList = limitRows(pvp.theirs, snap.settings.maxPlayerRows);
   const sum = pvp.mineTotal + pvp.theirsTotal;
   const mineShare = sum > 0 ? pvp.mineTotal / sum : 0.5;
   const seconds = Math.max(1, pvp.durationMs / 1000);
@@ -351,13 +369,14 @@ function PvpBody({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: s
         <>
           <h3 className={`${sideHead} m-0 text-good`}>Twoja strona</h3>
           <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
-            {pvp.mine.map((row) => (
+            {mineList.shown.map((row) => (
               <PlayerRow key={row.card.name} card={row.card} isSelf={row.isSelf} fill={row.share} onSelect={() => onDetail(row.card.name, 'livepvp')} primary={compact(row.damage)} secondary={<>{compact(row.dps)}/s · {percent(row.share)}</>} />
             ))}
+            <MoreRows hidden={mineList.hidden} />
           </ol>
           <h3 className={`${sideHead} m-0 text-bad`}>Przeciwnicy</h3>
           <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
-            {pvp.theirs.map((row) => (
+            {theirsList.shown.map((row) => (
               <PlayerRow
                 key={row.card.name}
                 card={row.card}
@@ -370,6 +389,7 @@ function PvpBody({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: s
                 actions={row.card.name === UNKNOWN_SOURCE ? undefined : <KdaButtons name={row.card.name} />}
               />
             ))}
+            <MoreRows hidden={theirsList.hidden} />
           </ol>
           <div className="mx-[5px] flex h-1 overflow-hidden rounded-full bg-bad" aria-hidden="true">
             <span className="bar-fill block h-full w-full bg-good" style={{ transform: `scaleX(${mineShare})` }} />
