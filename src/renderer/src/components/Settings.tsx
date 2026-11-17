@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { CLASS_LEGEND, ClassIcon } from './ClassIcon';
 import { acceleratorLabel, buildAccelerator, DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator, MODIFIERS, splitAccelerator } from '@shared/keys';
 import { PANEL_IDS, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
 
@@ -56,6 +57,21 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 const control = 'rounded-[6px] border border-line bg-panel-head px-2 py-1 text-[12px] text-ink';
 const button = 'rounded-[6px] bg-panel-head px-3 py-1.5 text-[12px] font-semibold text-ink ring-1 ring-line hover:bg-line';
 
+function ClassLegend() {
+  return (
+    <Section title="Ikony klas">
+      <ul className="m-0 grid list-none grid-cols-2 gap-x-4 gap-y-1.5 p-0">
+        {CLASS_LEGEND.map((c) => (
+          <li key={c.id} className="flex items-center gap-2.5 rounded-[8px] bg-row px-2.5 py-1.5">
+            <ClassIcon className={c.id} size={30} />
+            <span className="text-[13px] font-semibold">{c.label}</span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 function Look({ snap }: { snap: OverlaySnapshot }) {
   const { settings } = snap;
   const api = window.overlay;
@@ -91,6 +107,7 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
           <Switch label="Lobby w oknie DPS" checked={settings.showLobby} onChange={(v) => api.updateSettings({ showLobby: v })} />
         </Row>
       </Section>
+      <ClassLegend />
       <Section title="Przezroczystość">
         <Row title="Krycie okien" hint="Dotyczy okien z licznikami. Pasek, historia i ustawienia zawsze są w pełni widoczne.">
           <span className="flex items-center gap-2.5">
@@ -231,6 +248,24 @@ function Behavior({ snap }: { snap: OverlaySnapshot }) {
             onChange={(e) => e.target.value && api.updateSettings({ gameTitle: e.target.value })}
           />
         </Row>
+      </Section>
+      <Section title="Okienko po śmierci">
+        <Row title="Pokazuj okienko po śmierci" hint="Po twoim zgonie pokazuje, kto cię zabił (klasa, GS, CP), i daje przyciski +K / +D / cofnij do ręcznej poprawki K/D/A. Wyłączone: okienko w ogóle się nie pojawia, a zgony nadal liczą się w K/D/A.">
+          <Switch label="Pokazuj okienko po śmierci" checked={settings.deathPopup} onChange={(v) => api.updateSettings({ deathPopup: v })} />
+        </Row>
+        {settings.deathPopup && (
+          <Row title="Kiedy znika" hint="Po odrodzeniu: okienko chowa się samo, gdy znowu grasz (ekran ładowania, rzucanie umiejętności, odzyskane HP) albo po 30 s. Ręcznie: zostaje, dopóki go nie zamkniesz krzyżykiem albo nie zginiesz ponownie.">
+            <select
+              className={control}
+              aria-label="Kiedy znika okienko po śmierci"
+              value={settings.deathPopupClose}
+              onChange={(e) => api.updateSettings({ deathPopupClose: e.target.value === 'manual' ? 'manual' : 'respawn' })}
+            >
+              <option value="respawn">Po odrodzeniu</option>
+              <option value="manual">Po ręcznym zamknięciu</option>
+            </select>
+          </Row>
+        )}
       </Section>
       <Section title="Historia">
         <Row title="Tylko bossy" hint="Do historii trafiają walki z celami o dużej puli HP (główne i poboczne bossy), bez zwykłych mobów. Wyłącz, żeby zapisywać też walki na kukle.">

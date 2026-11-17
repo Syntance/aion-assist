@@ -236,7 +236,7 @@ function main(): void {
       gameFocused,
       altMode,
       overlayMode,
-      death: engine.deathSnapshot(now),
+      death: settings().deathPopup ? engine.deathSnapshot(now, settings().deathPopupClose === 'respawn') : null,
       pets: pets.snapshot(now, settings().petsMode),
       update: updater.snapshot,
       hotkeyConflicts,

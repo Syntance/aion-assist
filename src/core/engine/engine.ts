@@ -355,6 +355,8 @@ export class Engine {
   private lastDeathLoggedAt = 0;
   private lastDeath: { at: number; killer: string | null; registered: boolean } | null = null;
   private deathDismissed = false;
+  /** You are back in action since this death (loading screen, casting, HP again). */
+  private deathRespawned = false;
   /** Last time you killed or were killed by a player: a short fight that ended this way is still worth saving. */
   private lastDuelEndAt = 0;
 
@@ -368,13 +370,16 @@ export class Engine {
     // a kill record for the same death replaces the provisional entry without bringing the pop-up back
     const same = this.lastDeath !== null && at - this.lastDeath.at <= DEATH_FALLBACK_MS + 1_000;
     this.lastDeath = { at: same && this.lastDeath ? this.lastDeath.at : at, killer, registered };
-    if (!same) this.deathDismissed = false;
+    if (!same) {
+      this.deathDismissed = false;
+      this.deathRespawned = false;
+    }
   }
 
   /** Respawned (a loading screen, or you act / have HP again): the "who killed me" pop-up has done its job. */
   private checkRespawn(ev: GameEvent, now: number): void {
     const d = this.lastDeath;
-    if (!d || this.deathDismissed || now - d.at < 2_000) return;
+    if (!d || this.deathDismissed || this.deathRespawned || now - d.at < 2_000) return;
     const alive =
       ev.t === 'zone' ||
       ev.t === 'mapLoad' ||
@@ -382,16 +387,18 @@ export class Engine {
       (ev.t === 'cast' && ev.actor === this.selfId) ||
       (ev.t === 'damage' && ev.actor === this.selfId) ||
       (ev.t === 'hp' && ev.id === this.selfId && ev.cur !== null && ev.cur > 0);
-    if (alive) this.deathDismissed = true;
+    if (alive) this.deathRespawned = true;
   }
 
   dismissDeath(): void {
     this.deathDismissed = true;
   }
 
-  deathSnapshot(now: number): DeathSnapshot | null {
+  /** `autoClose`: hide the pop-up after a respawn (or 30 s); otherwise it stays until it is closed by hand. */
+  deathSnapshot(now: number, autoClose = true): DeathSnapshot | null {
     const d = this.lastDeath;
-    if (!d || this.deathDismissed || now - d.at > DEATH_SHOW_MS) return null;
+    if (!d || this.deathDismissed) return null;
+    if (autoClose && (this.deathRespawned || now - d.at > DEATH_SHOW_MS)) return null;
     const candidates =
       d.killer === null
         ? [...this.foeActive].filter(([, t]) => d.at - t <= FOE_ACTIVE_MS).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([name]) => name)

@@ -1,16 +1,16 @@
 # Graph Report - aion assist  (2026-11-17)
 
 ## Corpus Check
-- 85 files · ~75,309 words
+- 87 files · ~76,432 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 835 nodes · 1724 edges · 37 communities (31 shown, 6 thin omitted)
+- 849 nodes · 1650 edges · 38 communities (32 shown, 6 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 22 edges (avg confidence: 0.57)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c6b31d9f`
+- Built from commit: `8cea56ef`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -50,51 +50,52 @@
 - [[_COMMUNITY_index.ts|index.ts]]
 - [[_COMMUNITY_gen-pet-assets.py|gen-pet-assets.py]]
 - [[_COMMUNITY_gen-pet-data.py|gen-pet-data.py]]
+- [[_COMMUNITY_Toolbar.tsx|Toolbar.tsx]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `Engine` - 63 edges
-2. `OverlayApi` - 31 edges
-3. `GameEvent` - 26 edges
-4. `PetBook` - 22 edges
-5. `main()` - 16 edges
-6. `compilerOptions` - 16 edges
-7. `Bindings` - 15 edges
-8. `HistoryStore` - 15 edges
-9. `compact()` - 15 edges
-10. `W` - 14 edges
+1. `Engine` - 62 edges
+2. `OverlayApi` - 33 edges
+3. `GameEvent` - 25 edges
+4. `PetBook` - 21 edges
+5. `compilerOptions` - 16 edges
+6. `Bindings` - 15 edges
+7. `compact()` - 15 edges
+8. `HistoryStore` - 14 edges
+9. `W` - 14 edges
+10. `EncounterRecord` - 13 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `book()` --calls--> `emptyPetStore()`  [EXTRACTED]
   tests/pets.test.ts → src/core/pets/petBook.ts
+- `Props` --references--> `PlayerCard`  [EXTRACTED]
+  src/renderer/src/components/PlayerRow.tsx → src/shared/types.ts
 - `EngineContext` --references--> `GameEvent`  [EXTRACTED]
   src/core/engine/engine.ts → src/core/protocol/events.ts
-- `Run` --references--> `EncounterRecord`  [EXTRACTED]
-  src/main/history.ts → src/shared/types.ts
-- `dayLabel()` --calls--> `dayKey()`  [EXTRACTED]
-  src/renderer/src/components/History.tsx → src/shared/day.ts
-- `PvpDays()` --calls--> `dayKey()`  [EXTRACTED]
-  src/renderer/src/components/History.tsx → src/shared/day.ts
+- `OpponentBlock()` --calls--> `compact()`  [EXTRACTED]
+  src/renderer/src/components/History.tsx → src/renderer/src/format.ts
+- `main()` --calls--> `Settings`  [EXTRACTED]
+  src/main/index.ts → src/shared/types.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (37 total, 6 thin omitted)
+## Communities (38 total, 6 thin omitted)
 
 ### Community 0 - "panels.tsx"
-Cohesion: 0.07
-Nodes (43): App(), isToolbarShown(), ClassIcon(), GLYPHS, DeathPopup(), DetailWindow(), Props, bossLabel() (+35 more)
+Cohesion: 0.12
+Nodes (13): abyssRankTile(), CAPTURE_TEXT, CLASS_LABEL, DailyPanel(), FACTION_TEXT, FocusStrip(), lookupNote(), MeterMode (+5 more)
 
 ### Community 1 - "protocol.test.ts"
-Cohesion: 0.08
-Nodes (32): contains(), Direction, Discovery, findNameField(), hex(), stamp(), Stat, WATCH_OPCODES (+24 more)
+Cohesion: 0.07
+Nodes (34): contains(), Direction, Discovery, findNameField(), hex(), stamp(), Stat, WATCH_OPCODES (+26 more)
 
 ### Community 2 - "Engine"
-Cohesion: 0.08
-Nodes (9): buildDetail(), emptyDaily(), Engine, EngineOptions, dayKey(), EncounterRow, PlayerCard, PlayerDetail (+1 more)
+Cohesion: 0.07
+Nodes (10): buildDetail(), emptyDaily(), Engine, EngineOptions, Fight, newSkill(), skillBase(), PlayerCard (+2 more)
 
 ### Community 3 - "decoders.ts"
-Cohesion: 0.08
-Nodes (42): DAMAGE_BLOCK, decodeAbyssPoints(), decodeCast(), decodeDamage(), decodeDeath(), decodeDotTick(), decodeHp(), decodeKill() (+34 more)
+Cohesion: 0.06
+Nodes (49): DEMO_LOOKUPS, DemoSource, ENEMIES, PARTY, DAMAGE_BLOCK, decodeAbyssPoints(), decodeCast(), decodeDamage() (+41 more)
 
 ### Community 4 - "devDependencies"
 Cohesion: 0.04
@@ -105,24 +106,24 @@ Cohesion: 0.07
 Nodes (20): Candidate, CapturePipeline, flowKey(), hasHeartbeat(), LockedFlow, looksLikeTls(), PipelineStatus, Held (+12 more)
 
 ### Community 6 - "PetBook"
-Cohesion: 0.09
-Nodes (21): emptyPetStore(), META, PetBook, PetBookOptions, PetProfile, PetState, PetStoreData, stageGoal() (+13 more)
+Cohesion: 0.05
+Nodes (43): emptyPetStore(), META, PetBook, PetBookOptions, PetProfile, PetState, PetStoreData, stageGoal() (+35 more)
 
 ### Community 7 - "index.ts"
-Cohesion: 0.08
-Nodes (22): Device, devices, discoveryLines, drainAll(), post(), queue, rawLines, scanDevices() (+14 more)
+Cohesion: 0.12
+Nodes (8): Bindings, CapturedPacket, cString(), listDevices(), load(), PcapDevice, PcapHandle, Ptr
 
 ### Community 8 - "PetsPanel.tsx"
-Cohesion: 0.08
-Nodes (29): Drag, Panel(), Props, ViewContext, FAMILIES, PetFinderWindow(), RANK_LABEL, RankFilter (+21 more)
+Cohesion: 0.38
+Nodes (6): Drag, Panel(), Props, ViewContext, PanelId, PanelLayout
 
 ### Community 9 - "Settings.tsx"
-Cohesion: 0.08
-Nodes (23): About(), HotkeyRow(), MODIFIER_LABEL, PANEL_LABEL, REGIONS, SettingsWindow(), TabId, TABS (+15 more)
+Cohesion: 0.10
+Nodes (5): MODIFIER_LABEL, PANEL_LABEL, REGIONS, TabId, TABS
 
 ### Community 10 - "types.ts"
-Cohesion: 0.08
-Nodes (31): DailyRecord, EngineContext, HitInfo, LookupResult, PlayerTally, Profile, SkillTally, CLASS_NAMES (+23 more)
+Cohesion: 0.09
+Nodes (29): DailyRecord, EngineContext, HitInfo, LookupResult, PlayerTally, Profile, SkillTally, CLASS_NAMES (+21 more)
 
 ### Community 12 - "fps.ts"
 Cohesion: 0.12
@@ -133,28 +134,28 @@ Cohesion: 0.10
 Nodes (19): compilerOptions, esModuleInterop, isolatedModules, jsx, lib, module, moduleResolution, noEmit (+11 more)
 
 ### Community 14 - "armory.ts"
-Cohesion: 0.18
-Nodes (14): Armory, equipmentSchema, fetchCharacter(), fetchSkillNames(), findCharacter(), Found, getJson(), infoSchema (+6 more)
+Cohesion: 0.16
+Nodes (15): Armory, equipmentSchema, fetchCharacter(), fetchSkillNames(), findCharacter(), Found, getJson(), infoSchema (+7 more)
 
 ### Community 15 - "history.ts"
-Cohesion: 0.16
-Nodes (9): dict, namesSchema, NamesStore, Run, writeJson(), HistoryData, NameKind, NamesData (+1 more)
+Cohesion: 0.06
+Nodes (29): isWorldNpc(), dict, HistoryStore, namesSchema, NamesStore, Run, writeJson(), bossLabel() (+21 more)
 
 ### Community 16 - "store.ts"
-Cohesion: 0.15
-Nodes (16): main(), contextSchema, dailySchema, fileSchema, identitySchema, killSchema, memberSchema, opcodeFileSchema (+8 more)
+Cohesion: 0.11
+Nodes (12): contextSchema, dailySchema, fileSchema, identitySchema, killSchema, memberSchema, opcodeFileSchema, rivalSchema (+4 more)
 
 ### Community 17 - "index.ts"
-Cohesion: 0.13
-Nodes (12): capture, demoMode, hitRects, HOTKEY_MARK_CANDIDATES, primaryInstance, onlySent(), CaptureStatus, hitRectsSchema (+4 more)
+Cohesion: 0.12
+Nodes (14): capture, demoMode, hitRects, HOTKEY_MARK_CANDIDATES, primaryInstance, api, IPC, CaptureStatus (+6 more)
 
 ### Community 18 - "win32.ts"
 Cohesion: 0.18
 Nodes (14): CursorInfo, CURSORINFO_SIZE, ForegroundWindow, GetCursorInfo, getCursorState(), getForegroundWindow, GetWindowRect, GetWindowTextW (+6 more)
 
 ### Community 19 - "HistoryStore"
-Cohesion: 0.19
-Nodes (3): isWorldNpc(), HistoryStore, EncounterRecord
+Cohesion: 0.20
+Nodes (10): ClassIcon(), GLYPHS, DeathPopup(), KdaButtons(), GearLine(), PlayerRow(), Props, TONE (+2 more)
 
 ### Community 20 - "catalog.ts"
 Cohesion: 0.18
@@ -165,7 +166,7 @@ Cohesion: 0.18
 Nodes (10): Aion Assist, Aktualizacje, Architektura, Bezpieczeństwo konta — stan faktyczny, Skąd pochodzą dane i czego nie ma, Sterowanie, Tryb odkrywania (karta celu po zaznaczeniu), Uruchomienie (+2 more)
 
 ### Community 23 - "daily.test.ts"
-Cohesion: 0.20
+Cohesion: 0.33
 Nodes (3): EngineStore, AppData, RivalRecord
 
 ### Community 24 - "catalogImport.ts"
@@ -177,44 +178,48 @@ Cohesion: 0.29
 Nodes (3): firstLine(), Updater, UpdateSnapshot
 
 ### Community 26 - "opponents.ts"
-Cohesion: 0.31
-Nodes (6): fightResult, groupByOpponent(), OpponentFight, OpponentGroup, EncounterSummary, KillEntry
+Cohesion: 0.24
+Nodes (10): acceleratorLabel(), buildAccelerator(), DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator(), MODIFIERS, splitAccelerator(), onlySent() (+2 more)
 
 ### Community 27 - "demo.ts"
-Cohesion: 0.29
-Nodes (5): DEMO_LOOKUPS, demoLookup(), DemoSource, ENEMIES, PARTY
+Cohesion: 0.23
+Nodes (9): App(), isToolbarShown(), HistoryWindow(), NearbyPanel(), SettingsWindow(), CAPTURE_TEXT, ControlApp(), control (+1 more)
 
 ### Community 28 - "Fight"
-Cohesion: 0.43
-Nodes (3): Fight, newSkill(), skillBase()
+Cohesion: 0.32
+Nodes (9): DetailWindow(), Props, dateText(), PlayersWindow(), PvpFightRow(), MeterPanel(), clock(), compact() (+1 more)
 
 ### Community 29 - "Wydawanie aktualizacji (GitHub Releases)"
 Cohesion: 0.40
 Nodes (4): Co znajomy powinien wiedzieć, Każda nowa wersja, Konfiguracja (zrobiona), Wydawanie aktualizacji (GitHub Releases)
 
-### Community 30 - "petTrackerImport.ts"
-Cohesion: 0.50
-Nodes (4): ImportedProfile, isInt(), RawPet, readPetTrackerProfiles()
+### Community 32 - "index.ts"
+Cohesion: 0.29
+Nodes (9): Device, devices, discoveryLines, drainAll(), post(), queue, rawLines, scanDevices() (+1 more)
+
+### Community 37 - "Toolbar.tsx"
+Cohesion: 0.29
+Nodes (3): PANEL_META, Toolbar(), PANEL_IDS
 
 ## Knowledge Gaps
-- **184 isolated node(s):** `Uruchomienie`, `Sterowanie`, `Bezpieczeństwo konta — stan faktyczny`, `Tryb odkrywania (karta celu po zaznaczeniu)`, `Zwierzaki (Pet Tracker)` (+179 more)
+- **191 isolated node(s):** `Uruchomienie`, `Sterowanie`, `Bezpieczeństwo konta — stan faktyczny`, `Tryb odkrywania (karta celu po zaznaczeniu)`, `Zwierzaki (Pet Tracker)` (+186 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `GameEvent` connect `decoders.ts` to `protocol.test.ts`, `Engine`, `pipeline.ts`, `PetBook`, `index.ts`, `types.ts`, `demo.ts`?**
-  _High betweenness centrality (0.103) - this node is a cross-community bridge._
-- **Why does `Engine` connect `Engine` to `index.ts`, `types.ts`, `decoders.ts`, `daily.test.ts`?**
-  _High betweenness centrality (0.090) - this node is a cross-community bridge._
+- **Why does `GameEvent` connect `decoders.ts` to `protocol.test.ts`, `Engine`, `pipeline.ts`, `PetBook`, `types.ts`?**
+  _High betweenness centrality (0.108) - this node is a cross-community bridge._
+- **Why does `Engine` connect `Engine` to `types.ts`, `decoders.ts`, `daily.test.ts`, `history.ts`?**
+  _High betweenness centrality (0.062) - this node is a cross-community bridge._
 - **Why does `OverlayApi` connect `OverlayApi` to `index.ts`, `types.ts`?**
-  _High betweenness centrality (0.056) - this node is a cross-community bridge._
+  _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **What connects `Uruchomienie`, `Sterowanie`, `Bezpieczeństwo konta — stan faktyczny` to the rest of the system?**
-  _186 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _193 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `panels.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.0675990675990676 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1225296442687747 - nodes in this community are weakly interconnected._
 - **Should `protocol.test.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07629288274449565 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07307692307692308 - nodes in this community are weakly interconnected._
 - **Should `Engine` be split into smaller, more focused modules?**
-  _Cohesion score 0.08408249603384453 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07462686567164178 - nodes in this community are weakly interconnected._

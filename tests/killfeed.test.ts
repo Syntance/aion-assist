@@ -164,6 +164,16 @@ describe('who killed whom', () => {
     expect(quiet.pvpSnapshot(T0 + 1000).theirsTotal).toBe(0);
   });
 
+  it('keeps the death pop-up until it is closed by hand when auto-close is off', () => {
+    const { e } = setup();
+    e.apply({ t: 'kill', target: SELF, killerId: FOE, killerName: 'Milenium', killerServer: 2301, skill: 1 }, T0 + 1000);
+    e.apply({ t: 'hp', id: SELF, cur: 26815, max: 26815 }, T0 + 6000); // back in action
+    expect(e.deathSnapshot(T0 + 6100, true)).toBeNull();
+    expect(e.deathSnapshot(T0 + 60_000, false)).not.toBeNull(); // manual mode ignores the respawn and the 30 s limit
+    e.dismissDeath();
+    expect(e.deathSnapshot(T0 + 60_100, false)).toBeNull();
+  });
+
   it('ignores kills that do not involve you', () => {
     const { e } = setup();
     e.apply({ t: 'kill', target: FOE2, killerId: ALLY, killerName: 'Ken', killerServer: 1301, skill: 1 }, T0 + 1000);

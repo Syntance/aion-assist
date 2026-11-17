@@ -5,13 +5,13 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1794947038.884292,
-    "ast_hash": "f78a2ea5b1084daeee4ec7c77c512734",
+    "mtime": 1794949461.6760614,
+    "ast_hash": "f707da43d3ef297b34e1b1096c0c1fba",
     "semantic_hash": ""
   },
   "src/capture/index.ts": {
-    "mtime": 1794521261.7637358,
-    "ast_hash": "3e06dec13e2faec30529232bbe9deb0b",
+    "mtime": 1794949417.2342176,
+    "ast_hash": "55858408e723c9313684f0ab002f8650",
     "semantic_hash": ""
   },
   "src/capture/pcap.ts": {
@@ -135,8 +135,8 @@
     "semantic_hash": ""
   },
   "src/main/index.ts": {
-    "mtime": 1794944568.8481834,
-    "ast_hash": "c957595e4dc43b036cfba43ec61642d7",
+    "mtime": 1794949438.9659052,
+    "ast_hash": "21c3e7b2fb0b7b4c02e08445f10bb67d",
     "semantic_hash": ""
   },
   "src/main/petStore.ts": {
@@ -155,8 +155,8 @@
     "semantic_hash": ""
   },
   "src/main/updater.ts": {
-    "mtime": 1794944553.7174938,
-    "ast_hash": "db55eff1a8caad5b3e7e560c22a32cd3",
+    "mtime": 1794949417.2204342,
+    "ast_hash": "0de99e591dd6186a5d99493d79455e18",
     "semantic_hash": ""
   },
   "src/main/win32.ts": {
@@ -165,8 +165,8 @@
     "semantic_hash": ""
   },
   "src/preload/index.ts": {
-    "mtime": 1794944568.792737,
-    "ast_hash": "227d198b247566217813110c8b0399c4",
+    "mtime": 1794949417.1680036,
+    "ast_hash": "693651e91bc0efce03505dacedbd7900",
     "semantic_hash": ""
   },
   "src/renderer/src/App.tsx": {
@@ -235,8 +235,8 @@
     "semantic_hash": ""
   },
   "src/renderer/src/components/Settings.tsx": {
-    "mtime": 1794944572.4780393,
-    "ast_hash": "9b92b17274e3f4c7cbbfaef6be8f3dba",
+    "mtime": 1794949438.9654026,
+    "ast_hash": "98d2d5e4104d077dcbf7190eddea2209",
     "semantic_hash": ""
   },
   "src/renderer/src/components/Toolbar.tsx": {
@@ -280,8 +280,8 @@
     "semantic_hash": ""
   },
   "src/shared/ipc.ts": {
-    "mtime": 1794944568.7922337,
-    "ast_hash": "65c30ed0f4d1d9456a675554c3f8dea3",
+    "mtime": 1794949417.1680036,
+    "ast_hash": "1de759760b5e7be6a7b00f0ab5299147",
     "semantic_hash": ""
   },
   "src/shared/keys.ts": {
@@ -305,8 +305,8 @@
     "semantic_hash": ""
   },
   "src/shared/types.ts": {
-    "mtime": 1794944568.79173,
-    "ast_hash": "47042e824954d27de3733a3571b1c389",
+    "mtime": 1794949417.1670008,
+    "ast_hash": "0eb375a8634135fd34c920293ee0e98b",
     "semantic_hash": ""
   },
   "tests/abyss-replay.test.ts": {
@@ -415,8 +415,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794949009.1057372,
-    "ast_hash": "5f91b30be2c4c0fe9a033c41fb9dfd22",
+    "mtime": 1794949461.6767266,
+    "ast_hash": "af4598918c7e525798b0e989866ed17c",
     "semantic_hash": ""
   },
   "docs/RELEASING.md": {
@@ -427,6 +427,16 @@
   "src/renderer/index.html": {
     "mtime": 1794475406.6627326,
     "ast_hash": "8430ee7e16233b173c3ea30bca4134e9",
+    "semantic_hash": ""
+  },
+  "src/main/log.ts": {
+    "mtime": 1794949374.2849064,
+    "ast_hash": "863e58b500e461fc221b2a3af9dcaa7e",
+    "semantic_hash": ""
+  },
+  "tests/log.test.ts": {
+    "mtime": 1794949454.8973048,
+    "ast_hash": "c769d0af7bfa99f3bdd218ff6e8b8213",
     "semantic_hash": ""
   }
 }

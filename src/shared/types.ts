@@ -83,6 +83,9 @@ export const settingsSchema = z.object({
   autoUpdate: z.boolean().default(true),
   /** Detailed log lines (event counts, timings) in app.log. */
   debugLog: z.boolean().default(false),
+  /** The "you died" pop-up (who killed you, K/D buttons) and when it closes: after a respawn, or only by hand. */
+  deathPopup: z.boolean().default(true),
+  deathPopupClose: z.enum(['respawn', 'manual']).default('respawn'),
   /** Record raw game packets to raw_tcp_ours.log (needs a restart; large file, advanced). */
   rawCapture: z.boolean().default(false),
   /** Scan of nearby players (the "W pobliżu" panel and its profile lookups). Off = nothing runs. */
@@ -137,6 +140,8 @@ export const DEFAULT_SETTINGS: Settings = {
   petsHideMaxed: true,
   autoUpdate: true,
   debugLog: false,
+  deathPopup: true,
+  deathPopupClose: 'respawn',
   rawCapture: false,
   scanNearby: false,
   showPing: false,
