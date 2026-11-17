@@ -102,7 +102,9 @@ export const settingsSchema = z.object({
   armoryLookup: z.boolean(),
   region: z.enum(['eu', 'nae', 'naw', 'sa', 'asia']),
   /** Seconds without damage before a fight is closed. */
-  fightIdleSec: z.number().min(3).max(60),
+  fightIdleSec: z.number().min(3).max(120),
+  /** Seconds without damage after which the PvP window starts a new fight. */
+  pvpIdleSec: z.number().min(5).max(120).default(20),
   /** List same-faction players in the "nearby" panel (off: enemies and unknowns only). */
   showAllies: z.boolean().default(false),
   /** Show the expedition lobby / party list inside the DPS window (between fights). */
@@ -121,6 +123,8 @@ export const settingsSchema = z.object({
   maxPlayerRows: z.number().int().min(0).max(100).default(10),
   /** Custom colours of the class bars, your row and the "JA" tag. */
   colors: colorsSchema.default(DEFAULT_COLORS),
+  /** Which set of class emblems to show: the first (from the class list) or the second (coloured crests). */
+  classIcons: z.enum(['game', 'alt']).default('game'),
   deathPopup: z.boolean().default(true),
   deathPopupClose: z.enum(['respawn', 'manual']).default('respawn'),
   /** Record raw game packets to raw_tcp_ours.log (needs a restart; large file, advanced). */
@@ -169,6 +173,7 @@ export const DEFAULT_SETTINGS: Settings = {
   armoryLookup: true,
   region: 'eu',
   fightIdleSec: 8,
+  pvpIdleSec: 20,
   showAllies: false,
   showLobby: true,
   historyBossOnly: true,
@@ -179,6 +184,7 @@ export const DEFAULT_SETTINGS: Settings = {
   debugLog: false,
   maxPlayerRows: 10,
   colors: DEFAULT_COLORS,
+  classIcons: 'game',
   deathPopup: true,
   deathPopupClose: 'respawn',
   rawCapture: false,

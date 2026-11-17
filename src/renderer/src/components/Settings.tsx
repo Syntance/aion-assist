@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { CLASS_LEGEND, ClassIcon } from './ClassIcon';
+import { CLASS_LEGEND, ClassIcon, ClassIconSetContext, hasAltClassIcons } from './ClassIcon';
 import { FpsAccess } from './FpsAccess';
 import { acceleratorLabel, buildAccelerator, DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator, MODIFIERS, splitAccelerator } from '@shared/keys';
 import { DEFAULT_CLASS_COLORS, DEFAULT_COLORS, DEFAULT_TAG_BG, DEFAULT_TAG_TEXT, PANEL_IDS, type ColorSettings, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
@@ -58,9 +58,23 @@ const Section = ({ title, children }: { title: string; children: ReactNode }) =>
 const control = 'rounded-[6px] border border-line bg-panel-head px-2 py-1 text-[12px] text-ink';
 const button = 'rounded-[6px] bg-panel-head px-3 py-1.5 text-[12px] font-semibold text-ink ring-1 ring-line hover:bg-line';
 
-function ClassLegend() {
+function ClassLegend({ snap }: { snap: OverlaySnapshot }) {
+  const api = window.overlay;
   return (
     <Section title="Ikony klas">
+      <Row title="Zestaw ikon" hint={hasAltClassIcons ? 'Zestaw 1: emblematy z listy klas. Zestaw 2: kolorowe herby. Zmiana działa od razu we wszystkich oknach.' : 'Drugi zestaw nie jest dostępny w tej wersji (grafik nie ma w repozytorium).'}>
+        <select
+          className={control}
+          aria-label="Zestaw ikon klas"
+          value={snap.settings.classIcons}
+          disabled={!hasAltClassIcons}
+          onChange={(e) => api.updateSettings({ classIcons: e.target.value === 'alt' ? 'alt' : 'game' })}
+        >
+          <option value="game">Zestaw 1</option>
+          <option value="alt">Zestaw 2</option>
+        </select>
+      </Row>
+      <ClassIconSetContext.Provider value={snap.settings.classIcons}>
       <ul className="m-0 grid list-none grid-cols-2 gap-x-4 gap-y-1.5 p-0">
         {CLASS_LEGEND.map((c) => (
           <li key={c.id} className="flex items-center gap-2.5 rounded-[8px] bg-row px-2.5 py-1.5">
@@ -69,6 +83,7 @@ function ClassLegend() {
           </li>
         ))}
       </ul>
+      </ClassIconSetContext.Provider>
     </Section>
   );
 }
@@ -172,7 +187,7 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
           <Switch label="Lobby w oknie DPS" checked={settings.showLobby} onChange={(v) => api.updateSettings({ showLobby: v })} />
         </Row>
       </Section>
-      <ClassLegend />
+      <ClassLegend snap={snap} />
       <ColorSettingsSection snap={snap} />
       <Section title="Przezroczystość">
         <Row title="Krycie okien" hint="Przyciemnia tylko tło okien z licznikami (do 5%); napisy i ikony zostają w pełni widoczne. Pasek, historia i ustawienia zawsze mają pełne tło.">
@@ -364,6 +379,24 @@ function Behavior({ snap }: { snap: OverlaySnapshot }) {
               </option>
             ))}
             <option value={0}>Bez limitu</option>
+          </select>
+        </Row>
+        <Row title="Reset licznika po przerwie (Bossy)" hint="Po ilu sekundach bez zadawanych obrażeń walka się kończy, a następne trafienie zaczyna nowy licznik. Przy bossie z długimi mechanikami walka i tak trwa, dopóki boss żyje (do 15 minut ciszy). Domyślnie 8 s.">
+          <select className={control} aria-label="Reset licznika po przerwie, bossy" value={settings.fightIdleSec} onChange={(e) => api.updateSettings({ fightIdleSec: Number(e.target.value) })}>
+            {[3, 5, 8, 10, 15, 20, 30, 45, 60, 90, 120].map((n) => (
+              <option key={n} value={n}>
+                {n} s
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Row title="Reset licznika po przerwie (PvP)" hint="Po ilu sekundach bez trafień starcie z graczami się kończy, zapisuje w historii i następne trafienie zaczyna nowe. Domyślnie 20 s.">
+          <select className={control} aria-label="Reset licznika po przerwie, PvP" value={settings.pvpIdleSec} onChange={(e) => api.updateSettings({ pvpIdleSec: Number(e.target.value) })}>
+            {[5, 8, 10, 15, 20, 30, 45, 60, 90, 120].map((n) => (
+              <option key={n} value={n}>
+                {n} s
+              </option>
+            ))}
           </select>
         </Row>
         <Row title="Wyzeruj DPS" hint="Czyści bieżącą walkę w liczniku bossów.">

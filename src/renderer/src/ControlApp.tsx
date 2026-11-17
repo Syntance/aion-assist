@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { OverlaySnapshot } from '@shared/types';
+import { ClassIconSetContext } from './components/ClassIcon';
 import { FpsAccess } from './components/FpsAccess';
 import { SettingsWindow } from './components/Settings';
 
@@ -18,6 +19,7 @@ export function ControlApp() {
   if (!snap) return null;
   const connected = snap.capture.state === 'locked' || snap.capture.state === 'demo';
   return (
+    <ClassIconSetContext.Provider value={snap.settings.classIcons}>
     <div className="flex h-full flex-col bg-panel text-ink">
       <header className="flex items-center gap-3 border-b border-line bg-panel-head px-4 py-2.5">
         <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
@@ -69,5 +71,6 @@ export function ControlApp() {
         <SettingsWindow snap={snap} embedded onClose={() => undefined} />
       </div>
     </div>
+    </ClassIconSetContext.Provider>
   );
 }

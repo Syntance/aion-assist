@@ -32,7 +32,7 @@ const KILL_WINDOW_MS = 10_000;
 const DEATH_FALLBACK_MS = 2_500;
 /** How long the death pop-up stays up. */
 const DEATH_SHOW_MS = 30_000;
-const PVP_IDLE_MS = 20_000;
+const PVP_IDLE_DEFAULT_MS = 20_000;
 /** A fight that ended with your kill or death is saved about a second after its last hit, not after the full idle time. */
 const PVP_DONE_MS = 1_000;
 const ENCOUNTER_GAP_MS = 5 * 60_000;
@@ -94,6 +94,8 @@ export interface EngineContext {
 export interface EngineOptions {
   store: EngineStore;
   fightIdleMs: () => number;
+  /** Silence after which a player fight (PvP window) is over and the next hit starts a new one; default 20 s. */
+  pvpIdleMs?: () => number;
   /** History keeps only boss fights (high-HP targets), never regular mobs. */
   bossOnly?: () => boolean;
   /** User-given name of an NPC code (shown on the boss bar). */
@@ -365,6 +367,10 @@ export class Engine {
   private lastDuelEndAt = 0;
 
   constructor(private readonly opts: EngineOptions) {}
+
+  private pvpIdleMs(): number {
+    return this.opts.pvpIdleMs?.() ?? PVP_IDLE_DEFAULT_MS;
+  }
 
   /**
    * Some deaths arrive without a kill record we can read (seen live in the Abyss: died to a player, K/D/A stayed).
@@ -830,7 +836,7 @@ export class Engine {
       // record for may be hitting you, and leaving it out makes the fight look one-sided.
       const mine = this.pvpMine;
       const theirs = this.pvpTheirs;
-      if (targetId === this.selfId && mine && theirs && now - Math.max(mine.last, theirs.last) <= PVP_IDLE_MS) {
+      if (targetId === this.selfId && mine && theirs && now - Math.max(mine.last, theirs.last) <= this.pvpIdleMs()) {
         theirs.add(UNKNOWN_SOURCE, amount, crit, now, info);
       }
       return;
@@ -865,7 +871,7 @@ export class Engine {
     if (!hits) this.lastHits.set(targetId, (hits = new Map()));
     hits.set(actorId, now);
 
-    const pvpIdle = !this.pvpMine || !this.pvpTheirs || this.pvpMine === this.archivedPvp || now - Math.max(this.pvpMine.last, this.pvpTheirs.last) > PVP_IDLE_MS;
+    const pvpIdle = !this.pvpMine || !this.pvpTheirs || this.pvpMine === this.archivedPvp || now - Math.max(this.pvpMine.last, this.pvpTheirs.last) > this.pvpIdleMs();
     if (pvpIdle) {
       this.pvpMine = new Fight(now);
       this.pvpTheirs = new Fight(now);
@@ -1119,7 +1125,7 @@ export class Engine {
     if (!mine || !theirs || mine === this.archivedPvp) return;
     const last = Math.max(mine.last, theirs.last);
     const ended = this.lastDuelEndAt >= mine.start;
-    if (now - last <= (ended ? PVP_DONE_MS : PVP_IDLE_MS)) return;
+    if (now - last <= (ended ? PVP_DONE_MS : this.pvpIdleMs())) return;
     this.archivedPvp = mine;
     const durationMs = Math.max(1, last - mine.start);
     const total = mine.total();
@@ -1229,7 +1235,7 @@ export class Engine {
     const theirs = this.pvpTheirs;
     if (!mine || !theirs) return null;
     const last = Math.max(mine.last, theirs.last);
-    const active = now - last <= PVP_IDLE_MS;
+    const active = now - last <= this.pvpIdleMs();
     const durationMs = Math.max(1000, (active ? now : last) - mine.start);
     const row = [...this.encounterRows(mine, 'mine'), ...this.encounterRows(theirs, 'theirs')].find((r) => r.name === name);
     return row ? buildDetail(row, durationMs, 'PvP') : null;
@@ -1310,7 +1316,7 @@ export class Engine {
       return { ...base, active: false, durationMs: 0, mine: [], theirs: [], mineTotal: 0, theirsTotal: 0 };
     }
     const last = Math.max(mine.last, theirs.last);
-    const active = now - last <= PVP_IDLE_MS;
+    const active = now - last <= this.pvpIdleMs();
     const durationMs = Math.max(1000, (active ? now : last) - mine.start);
     const seconds = durationMs / 1000;
     return {

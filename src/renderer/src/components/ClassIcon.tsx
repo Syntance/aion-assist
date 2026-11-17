@@ -1,8 +1,13 @@
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import type { ClassName } from '@shared/types';
 
 const emblems = import.meta.glob<string>('../assets/classes/*.png', { eager: true, query: '?url', import: 'default' });
-const emblemUrl = (name: string): string | undefined => emblems[`../assets/classes/${name}.png`];
+const altEmblems = import.meta.glob<string>('../assets/classes-alt/*.png', { eager: true, query: '?url', import: 'default' });
+export type ClassIconSet = 'game' | 'alt';
+/** Which set of emblems the class icons use (the setting); a missing second set falls back to the first. */
+export const ClassIconSetContext = createContext<ClassIconSet>('game');
+const emblemUrl = (name: string, set: ClassIconSet): string | undefined =>
+  (set === 'alt' ? altEmblems[`../assets/classes-alt/${name}.png`] : undefined) ?? emblems[`../assets/classes/${name}.png`];
 
 /**
  * Class emblems: the game's own emblems when the artwork is present (tools/gen-class-icons.py cuts them out of a
@@ -40,6 +45,9 @@ const LABEL: Record<ClassName | 'unknown', string> = {
 };
 
 /** The classes in the order of the game's class list, with their names (for the legend in the settings). */
+/** True when the second set of emblems is present (its artwork is not in the repository). */
+export const hasAltClassIcons = Object.keys(altEmblems).length > 0;
+
 export const CLASS_LEGEND: { id: ClassName; label: string }[] = [
   { id: 'gladiator', label: LABEL.gladiator },
   { id: 'assassin', label: LABEL.assassin },
@@ -119,7 +127,8 @@ const GLYPHS: Record<ClassName | 'unknown', ReactNode> = {
 
 export function ClassIcon({ className, size = 28 }: { className: ClassName | null; size?: number }) {
   const key = className ?? 'unknown';
-  const url = emblemUrl(key);
+  const set = useContext(ClassIconSetContext);
+  const url = emblemUrl(key, set);
   if (url) {
     return (
       <span className="grid shrink-0 place-items-center" style={{ width: size, height: size }} title={LABEL[key]}>

@@ -136,6 +136,7 @@ function main(): void {
     store: store.data,
     knownDungeon,
     fightIdleMs: () => settings().fightIdleSec * 1000,
+    pvpIdleMs: () => settings().pvpIdleSec * 1000,
     bossOnly: () => settings().historyBossOnly,
     npcName,
     npcBoss: (code) => catalog.npc(code)?.boss ?? null,

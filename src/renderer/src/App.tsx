@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CLASS_NAMES, type OverlaySnapshot } from '@shared/types';
 import { DetailWindow } from './components/Detail';
+import { ClassIconSetContext } from './components/ClassIcon';
 import { DeathPopup } from './components/DeathPopup';
 import { PetFinderWindow } from './components/PetFinder';
 import { PetMapWindow } from './components/PetMap';
@@ -92,6 +93,7 @@ export function App() {
 
   return (
     <div className="relative h-full">
+      <ClassIconSetContext.Provider value={snap.settings.classIcons}>
       <ViewContext.Provider value={{ visible: snap.visible, shown: toolbarShown, opacity: snap.settings.opacity }}>
       <main ref={rootRef} className="overlay-root relative h-full">
         <h1 className="sr-only">Aion Assist</h1>
@@ -184,6 +186,7 @@ export function App() {
         onSettings={() => setSettingsOpen((v) => !v)}
       />
       </ViewContext.Provider>
+      </ClassIconSetContext.Provider>
     </div>
   );
 }

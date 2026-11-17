@@ -69,6 +69,8 @@ export function PlayerRow({ card, isSelf, fill, primary, secondary, badge, actio
         }}
         aria-hidden="true"
       />
+      {/* a darker fade from the left edge to the right, so the class icon stands out from the bar colour */}
+      <span className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(90deg, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.28) 30%, oklch(0 0 0 / 0) 75%)' }} aria-hidden="true" />
       {/* light from above: a soft highlight on the top and a light fade of shadow along the bottom over the full width */}
       <span
         className="bar-fill pointer-events-none absolute inset-0"

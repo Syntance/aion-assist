@@ -174,6 +174,19 @@ describe('who killed whom', () => {
     expect(e.deathSnapshot(T0 + 60_100, false)).toBeNull();
   });
 
+  it('ends a PvP fight after the configured silence (default 20 s)', () => {
+    const quick = new Engine({ store: { rivals: {}, daily: {} }, fightIdleMs: () => 8000, pvpIdleMs: () => 5000 });
+    const def = new Engine({ store: { rivals: {}, daily: {} }, fightIdleMs: () => 8000 });
+    for (const e of [quick, def]) {
+      e.apply({ t: 'self', id: SELF, name: 'SilentDeath', server: 1301, classCode: 17, level: 45 }, T0);
+      e.apply({ t: 'player', id: FOE, name: 'Milenium', classCode: 5, server: 2301, legion: null }, T0);
+      dmg(SELF, FOE, T0 + 500, e);
+    }
+    expect(quick.pvpSnapshot(T0 + 8000).active).toBe(false); // 7.5 s of silence > 5 s
+    expect(def.pvpSnapshot(T0 + 8000).active).toBe(true); // still within the default 20 s
+    expect(def.pvpSnapshot(T0 + 22_000).active).toBe(false);
+  });
+
   it('ignores kills that do not involve you', () => {
     const { e } = setup();
     e.apply({ t: 'kill', target: FOE2, killerId: ALLY, killerName: 'Ken', killerServer: 1301, skill: 1 }, T0 + 1000);

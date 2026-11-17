@@ -10,6 +10,7 @@ __pycache__/
 src/renderer/src/assets/pets/
 src/renderer/src/assets/maps/
 src/renderer/src/assets/classes/
+src/renderer/src/assets/classes-alt/
 .claude/
 graphify-out/
 src/renderer/src/assets/items/
