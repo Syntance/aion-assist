@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+
+/* static: class colours are referenced dynamically (var(--color-cls-*)), so keep them all */
+@theme static {
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+
+  /* deep navy with a teal accent, close to the Abyss Logs look */
+  --color-panel: oklch(0.2 0.028 245 / 0.92);
+  --color-panel-head: oklch(0.155 0.026 245 / 0.96);
+  --color-row: oklch(0.255 0.03 245 / 0.74);
+  --color-line: oklch(0.42 0.035 235 / 0.5);
+  --color-ink: oklch(0.96 0.008 230);
+  --color-ink-dim: oklch(0.77 0.018 235);
+  --color-ink-mute: oklch(0.6 0.022 235);
+  --color-accent: oklch(0.82 0.12 188);
+  --color-warm: oklch(0.78 0.14 68);
+  --color-good: oklch(0.78 0.16 150);
+  --color-bad: oklch(0.68 0.19 25);
+  --color-self: oklch(0.72 0.2 340);
+
+  --color-cls-gladiator: oklch(0.6 0.17 28);
+  --color-cls-templar: oklch(0.64 0.1 232);
+  --color-cls-ranger: oklch(0.64 0.14 150);
+  --color-cls-assassin: oklch(0.55 0.17 305);
+  --color-cls-spiritmaster: oklch(0.64 0.12 192);
+  --color-cls-sorcerer: oklch(0.58 0.15 256);
+  --color-cls-cleric: oklch(0.72 0.12 92);
+  --color-cls-chanter: oklch(0.68 0.15 58);
+  --color-cls-unknown: oklch(0.52 0.03 255);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--color-ink);
+  font-size: 13px;
+  line-height: 1.25;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+
+/* Overlay fade (auto-hide). Opacity only, so it stays cheap on top of the game. */
+.overlay-root {
+  transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay-root,
+  .bar-fill {
+    transition: none !important;
+  }
+}
+
+.bar-fill {
+  transform-origin: left center;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

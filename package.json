@@ -1,0 +1,63 @@
+{
+  "name": "aion-assist",
+  "version": "0.1.0",
+  "description": "Pasywna nakładka (DPS meter, PvP, target info) dla AION 2 — tylko nasłuch pakietów (Npcap) i standardowe API okien Windows.",
+  "license": "GPL-3.0-or-later",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "demo": "electron-vite dev -- --demo",
+    "discover": "electron-vite dev -- --discover",
+    "start": "electron-vite preview",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "dist": "electron-vite build && electron-builder --win",
+    "release": "electron-vite build && electron-builder --win --publish always"
+  },
+  "build": {
+    "appId": "app.aionassist.overlay",
+    "productName": "Aion Assist",
+    "files": [
+      "out/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "artifactName": "Aion-Assist-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Syntance",
+        "repo": "aion-assist",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "eslint": "^10.14.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11",
+    "koffi": "^3.3.7",
+    "zod": "^4.6.7"
+  }
+}
