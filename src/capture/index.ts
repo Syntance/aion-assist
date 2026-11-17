@@ -88,6 +88,9 @@ function scanDevices(): void {
 }
 
 let rawLines: string[] = [];
+/** Stop recording raw packets after this many characters so a long session cannot fill the disk. */
+const RAW_LIMIT_CHARS = 400_000_000;
+let rawChars = 0;
 
 function start(
   opcodeOverrides: Record<string, string> | null,
@@ -122,9 +125,10 @@ function start(
     rawPath
       ? (seg, now) => {
           // same line format as Abyss Logs' raw_tcp.log, so both can be replayed and compared
-          rawLines.push(
-            `[${now}] src=${seg.srcPort} dst=${seg.dstPort} seq=${seg.seq} len=${seg.payload.length} hex=${Buffer.from(seg.payload).toString('hex').toUpperCase()}`,
-          );
+          if (rawChars > RAW_LIMIT_CHARS) return;
+          const line = `[${now}] src=${seg.srcPort} dst=${seg.dstPort} seq=${seg.seq} len=${seg.payload.length} hex=${Buffer.from(seg.payload).toString('hex').toUpperCase()}`;
+          rawChars += line.length + 1;
+          rawLines.push(line);
         }
       : undefined,
   );

@@ -21,6 +21,7 @@ export class Updater {
   constructor(
     private readonly onChange: () => void,
     private readonly enabled: () => boolean,
+    private readonly log: (level: 'INFO' | 'WARN', text: string) => void = () => undefined,
   ) {
     if (!app.isPackaged) {
       this.snap.state = 'off';
@@ -30,12 +31,25 @@ export class Updater {
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.allowPrerelease = false;
     autoUpdater.logger = null;
-    autoUpdater.on('checking-for-update', () => this.set({ state: 'checking', error: null }));
-    autoUpdater.on('update-available', (info) => this.set({ state: 'downloading', available: info.version, percent: 0 }));
-    autoUpdater.on('update-not-available', () => this.set({ state: 'current', available: null, percent: null, checkedAt: Date.now() }));
+    autoUpdater.on('checking-for-update', () => {
+      this.log('INFO', 'updater: checking');
+      this.set({ state: 'checking', error: null });
+    });
+    autoUpdater.on('update-available', (info) => {
+      this.log('INFO', `updater: ${info.version} available`);
+      this.set({ state: 'downloading', available: info.version, percent: 0 });
+    });
+    autoUpdater.on('update-not-available', () => {
+      this.log('INFO', 'updater: up to date');
+      this.set({ state: 'current', available: null, percent: null, checkedAt: Date.now() });
+    });
     autoUpdater.on('download-progress', (p) => this.set({ state: 'downloading', percent: Math.round(p.percent) }));
-    autoUpdater.on('update-downloaded', (info) => this.set({ state: 'ready', available: info.version, percent: 100, checkedAt: Date.now() }));
+    autoUpdater.on('update-downloaded', (info) => {
+      this.log('INFO', `updater: ${info.version} downloaded`);
+      this.set({ state: 'ready', available: info.version, percent: 100, checkedAt: Date.now() });
+    });
     autoUpdater.on('error', (err) => {
+      this.log('WARN', `updater: ${firstLine(err)}`);
       // a failed background check is quiet (no internet, no release yet); a manual one says why
       this.set({ state: this.manual ? 'error' : 'idle', error: this.manual ? firstLine(err) : null });
     });

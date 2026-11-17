@@ -1,7 +1,7 @@
 # Graph Report - aion assist  (2026-11-17)
 
 ## Corpus Check
-- 85 files · ~75,244 words
+- 85 files · ~75,309 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ab0ccc56`
+- Built from commit: `c6b31d9f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -197,7 +197,7 @@ Cohesion: 0.50
 Nodes (4): ImportedProfile, isInt(), RawPet, readPetTrackerProfiles()
 
 ## Knowledge Gaps
-- **184 isolated node(s):** `Konfiguracja (zrobiona)`, `Każda nowa wersja`, `Co znajomy powinien wiedzieć`, `Uruchomienie`, `Sterowanie` (+179 more)
+- **184 isolated node(s):** `Uruchomienie`, `Sterowanie`, `Bezpieczeństwo konta — stan faktyczny`, `Tryb odkrywania (karta celu po zaznaczeniu)`, `Zwierzaki (Pet Tracker)` (+179 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **6 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -210,7 +210,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.090) - this node is a cross-community bridge._
 - **Why does `OverlayApi` connect `OverlayApi` to `index.ts`, `types.ts`?**
   _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **What connects `Konfiguracja (zrobiona)`, `Każda nowa wersja`, `Co znajomy powinien wiedzieć` to the rest of the system?**
+- **What connects `Uruchomienie`, `Sterowanie`, `Bezpieczeństwo konta — stan faktyczny` to the rest of the system?**
   _186 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `panels.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.0675990675990676 - nodes in this community are weakly interconnected._

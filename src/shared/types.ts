@@ -81,6 +81,10 @@ export const settingsSchema = z.object({
   petsHideMaxed: z.boolean().default(true),
   /** Look for a newer version on GitHub in the background and download it. */
   autoUpdate: z.boolean().default(true),
+  /** Detailed log lines (event counts, timings) in app.log. */
+  debugLog: z.boolean().default(false),
+  /** Record raw game packets to raw_tcp_ours.log (needs a restart; large file, advanced). */
+  rawCapture: z.boolean().default(false),
   /** Scan of nearby players (the "W pobliżu" panel and its profile lookups). Off = nothing runs. */
   scanNearby: z.boolean().default(false),
   /** Show the ping (round trip to the game server, from captured TCP acknowledgements) in the DPS window footer. */
@@ -132,6 +136,8 @@ export const DEFAULT_SETTINGS: Settings = {
   petsRows: 5,
   petsHideMaxed: true,
   autoUpdate: true,
+  debugLog: false,
+  rawCapture: false,
   scanNearby: false,
   showPing: false,
   showFps: true,
@@ -554,6 +560,10 @@ export interface OverlayApi {
   adjustKda(name: string, action: KdaAction): void;
   /** Every pet with its rank, souls and how to get it (the pet finder window). */
   getPets(): Promise<PetRow[]>;
+  /** Opens the folder with the app's data and logs. */
+  openLogFolder(): void;
+  /** Asks where to save a diagnostic report (versions, state, settings, recent log); resolves to the saved path or null. */
+  saveReport(): Promise<string | null>;
   checkUpdate(): void;
   installUpdate(): void;
   /** Copies ranks and souls from the PetTracker app's saved profile; resolves to how many pets were imported. */

@@ -380,6 +380,38 @@ function UpdateSection({ snap }: { snap: OverlaySnapshot }) {
   );
 }
 
+function Diagnostics({ snap }: { snap: OverlaySnapshot }) {
+  const { settings } = snap;
+  const api = window.overlay;
+  const [saved, setSaved] = useState('');
+  return (
+    <Section title="Diagnostyka">
+      <Row title="Szczegółowe logi" hint="Zapisuje do pliku app.log dodatkowe wpisy co 30 s (liczba zdarzeń z gry, ping, FPS, stan przechwytywania). Podstawowe wpisy (start, błędy, aktualizacje) zapisują się zawsze. Plik ma najwyżej ok. 2 MB i zostaje na komputerze.">
+        <Switch label="Szczegółowe logi" checked={settings.debugLog} onChange={(v) => api.updateSettings({ debugLog: v })} />
+      </Row>
+      <Row title="Nagrywaj surowe pakiety" hint="Zaawansowane: zapisuje ruch gry do pliku raw_tcp_ours.log (do analizy nowych pakietów). Plik szybko rośnie (do ok. 400 MB, potem nagrywanie się zatrzymuje) i zawiera nicki graczy z okolicy. Zmiana działa po ponownym uruchomieniu aplikacji.">
+        <Switch label="Nagrywaj surowe pakiety" checked={settings.rawCapture} onChange={(v) => api.updateSettings({ rawCapture: v })} />
+      </Row>
+      <Row title="Folder z logami" hint="Otwiera folder %APPDATA%\\aion-assist (app.log, crash.log, ustawienia, historia).">
+        <button type="button" className={button} onClick={() => api.openLogFolder()}>
+          Otwórz folder
+        </button>
+      </Row>
+      <Row title="Raport diagnostyczny" hint={saved ? `Zapisano: ${saved}` : 'Zapisuje plik tekstowy z wersjami, stanem przechwytywania, ustawieniami i końcówką logów, do wysłania w razie problemu. Zawiera nazwę twojej postaci; nie ma w nim historii walk ani danych innych graczy.'}>
+          <button
+            type="button"
+            className={button}
+            onClick={() => {
+              void api.saveReport().then((p) => setSaved(p ?? ''));
+            }}
+          >
+            Zapisz raport
+          </button>
+        </Row>
+    </Section>
+  );
+}
+
 function About({ hotkeys, snap }: { hotkeys: { pin: string; edit: string }; snap: OverlaySnapshot }) {
   const keys: [string, string][] = [
     [acceleratorLabel(hotkeys.edit), 'Przesuwanie okien (to samo robi przycisk na pasku)'],
@@ -388,6 +420,7 @@ function About({ hotkeys, snap }: { hotkeys: { pin: string; edit: string }; snap
   return (
     <>
       <UpdateSection snap={snap} />
+      <Diagnostics snap={snap} />
       <Section title="Skróty">
         {keys.map(([k, v]) => (
           <Row key={k} title={v}>

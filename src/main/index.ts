@@ -1,6 +1,7 @@
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { release } from 'node:os';
 import { join } from 'node:path';
-import { app, BrowserWindow, dialog, globalShortcut, ipcMain, Menu, nativeImage, screen, Tray, utilityProcess } from 'electron';
+import { app, BrowserWindow, dialog, globalShortcut, shell, ipcMain, Menu, nativeImage, screen, Tray, utilityProcess } from 'electron';
 import { DemoSource, demoLookup } from '@core/demo';
 import { buildDetail, Engine, isWorldNpc } from '@core/engine/engine';
 import type { CaptureToMain, MainToCapture } from '@shared/captureMessages';
@@ -20,6 +21,7 @@ import {
   type PlayerDetail,
 } from '@shared/types';
 import { PetBook } from '@core/pets/petBook';
+import { Logger } from './log';
 import { Updater } from './updater';
 import { Armory } from './armory';
 import { NpcCatalog } from './catalog';
@@ -96,9 +98,15 @@ function main(): void {
     const match = readPetTrackerProfiles(process.env.LOCALAPPDATA).find((p) => p.character === name);
     return match ? pets.importPets(match.pets, Date.now()) : 0;
   };
+  const log = new Logger(app.getPath('userData'), () => settings().debugLog);
+  appLog = log;
+  log.info(`start v${app.getVersion()} electron ${process.versions.electron} ${process.platform} ${release()} packaged=${app.isPackaged} demo=${demoMode} discover=${discoverMode}`);
+  /** Events decoded since the last detailed-log line, by type. */
+  const eventCounts = new Map<string, number>();
   const updater = new Updater(
     () => push(),
     () => settings().autoUpdate && !demoMode && shotPath === null,
+    (level, text) => (level === 'WARN' ? log.warn(text) : log.info(text)),
   );
   const fpsMeter = new FpsMeter();
   /** Starts or stops the frame tracing to follow the setting (it only runs while the FPS option is on). */
@@ -357,6 +365,47 @@ function main(): void {
     const n = importPetTracker();
     push();
     return n;
+  });
+  ipcMain.on(IPC.openLogFolder, () => void shell.openPath(app.getPath('userData')));
+  ipcMain.handle(IPC.saveReport, async () => {
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    const target = controlWin && !controlWin.isDestroyed() ? controlWin : win;
+    const options = { title: 'Zapisz raport diagnostyczny', defaultPath: join(app.getPath('desktop'), `aion-assist-raport-${stamp}.txt`), filters: [{ name: 'Tekst', extensions: ['txt'] }] };
+    const picked = target ? await dialog.showSaveDialog(target, options) : await dialog.showSaveDialog(options);
+    if (picked.canceled || !picked.filePath) return null;
+    const self = engine.selfSnapshot();
+    const counts = [...eventCounts].map(([k, v]) => `${k}=${v}`).join(' ');
+    const crash = ((): string => {
+      try {
+        const file = join(app.getPath('userData'), 'crash.log');
+        return existsSync(file) ? readFileSync(file, 'utf8').slice(-20_000) : '';
+      } catch {
+        return '';
+      }
+    })();
+    const text = [
+      'Aion Assist: raport diagnostyczny',
+      `Utworzono: ${new Date().toISOString()}`,
+      `Wersja: ${app.getVersion()} (spakowana: ${app.isPackaged})`,
+      `Electron ${process.versions.electron}, Chrome ${process.versions.chrome}, Node ${process.versions.node}`,
+      `System: ${process.platform} ${release()} ${process.arch}`,
+      `Przechwytywanie: ${capture.state}${capture.detail ? ` (${capture.detail})` : ''}, port ${capture.port ?? '-'}`,
+      `Postać: ${self?.name ?? 'nierozpoznana'}`,
+      `Zdarzenia od uruchomienia (od ostatniego wpisu szczegółowego): ${counts || 'brak'}`,
+      '',
+      '--- Ustawienia ---',
+      JSON.stringify(settings(), null, 2),
+      '',
+      '--- app.log (koniec) ---',
+      log.tail(),
+      '',
+      '--- crash.log (koniec) ---',
+      crash || '(brak)',
+      '',
+    ].join('\n');
+    writeFileSync(picked.filePath, text, 'utf8');
+    log.info(`report saved: ${picked.filePath}`);
+    return picked.filePath;
   });
   ipcMain.on(IPC.checkUpdate, () => void updater.check(true));
   ipcMain.on(IPC.installUpdate, () => updater.install());
@@ -641,6 +690,7 @@ function main(): void {
           engine.restoreContext(rest, Date.now());
         }
         const hint = discoverMode && message.state === 'locked' ? discoveryHint() : null;
+        if (capture.state !== message.state || capture.port !== message.port) log.info(`capture: ${message.state} port=${message.port ?? '-'}${message.detail ? ` (${message.detail})` : ''}`);
         capture = { state: message.state, detail: message.detail ?? hint, port: message.port };
         push();
         return;
@@ -651,6 +701,7 @@ function main(): void {
           diag.damage++;
           if (event.actor === diag.selfIdHint()) diag.ownDamage++;
         }
+        eventCounts.set(event.t, (eventCounts.get(event.t) ?? 0) + 1);
         engine.apply(event, now);
         pets.apply(event, now);
         if (event.t === 'self' && event.name && !pets.hasCollection()) importPetTracker(); // first run: take what PetTracker already knows
@@ -668,6 +719,7 @@ function main(): void {
       }
     });
     child.on('exit', (code) => {
+      log.error(`capture process exited (code ${code})`);
       capture = { state: 'error', detail: `Proces nasłuchu zakończył się (kod ${code}). Czy Npcap jest zainstalowany?`, port: null };
       push();
     });
@@ -677,7 +729,7 @@ function main(): void {
       discover: discoverMode,
       // the last known character name, so discovery can find every packet that carries it
       watchNames: discoverMode ? [readIdentity(app.getPath('userData'))?.name].filter((n): n is string => !!n) : [],
-      rawTcpPath: discoverMode ? join(app.getPath('userData'), 'raw_tcp_ours.log') : null,
+      rawTcpPath: discoverMode || settings().rawCapture ? join(app.getPath('userData'), 'raw_tcp_ours.log') : null,
     };
     child.once('spawn', () => child.postMessage(init));
     if (discoverMode) {
@@ -728,6 +780,12 @@ function main(): void {
     store.save();
   }, SAVE_MS);
 
+  setInterval(() => {
+    if (!settings().debugLog) return;
+    const counts = [...eventCounts].map(([k, v]) => `${k}=${v}`).join(' ');
+    eventCounts.clear();
+    log.debug(`events/30s: ${counts || 'none'} | capture=${capture.state} ping=${engine.pingSnapshot(Date.now()).ms ?? '-'} fps=${fpsMeter.value(Date.now()) ?? '-'}`);
+  }, 30_000);
   updater.start();
   app.on('will-quit', () => {
     engine.pollHistory(Date.now() + 3_600_000); // archive a fight still on the screen
@@ -751,8 +809,11 @@ function main(): void {
 }
 
 /** Appends an error to crash.log in the user-data folder (a second copy of the app, or a failed start, must leave a trace). */
+let appLog: Logger | null = null;
+
 function logCrash(where: string, err: unknown): void {
   const text = err instanceof Error ? `${err.stack ?? err.message}` : String(err);
+  appLog?.error(`[${where}] ${text.split('\n')[0] ?? ''}`);
   try {
     appendFileSync(join(app.getPath('userData'), 'crash.log'), `${new Date().toISOString()} [${where}] ${text}\n`, 'utf8');
   } catch {
