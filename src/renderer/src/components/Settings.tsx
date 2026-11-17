@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { CLASS_LEGEND, ClassIcon } from './ClassIcon';
+import { FpsAccess } from './FpsAccess';
 import { acceleratorLabel, buildAccelerator, DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator, MODIFIERS, splitAccelerator } from '@shared/keys';
 import { PANEL_IDS, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
 
@@ -90,10 +91,7 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
           title="FPS gry w oknie DPS"
           hint={
             snap.settings.showFps && snap.fps.state === 'denied' ? (
-              <span className="text-bad">
-                Brak uprawnień do śledzenia klatek. Jednorazowo dodaj swoje konto do grupy „Użytkownicy dzienników wydajności" (jako administrator: <b>net localgroup "Performance Log Users" %USERNAME% /add</b>) i wyloguj się oraz zaloguj,
-                albo uruchom aplikację jako administrator.
-              </span>
+              <FpsAccess />
             ) : snap.settings.showFps && snap.fps.state === 'error' ? (
               <span className="text-bad">Nie udało się uruchomić śledzenia klatek gry.</span>
             ) : (

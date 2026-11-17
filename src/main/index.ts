@@ -21,6 +21,7 @@ import {
   type PlayerDetail,
 } from '@shared/types';
 import { PetBook } from '@core/pets/petBook';
+import { fpsGroupState, grantFpsAccess, logOffWindows } from './fpsAccess';
 import { Logger } from './log';
 import { Updater } from './updater';
 import { Armory } from './armory';
@@ -365,6 +366,19 @@ function main(): void {
     const n = importPetTracker();
     push();
     return n;
+  });
+  ipcMain.handle(IPC.fpsAccess, async (_e, action: unknown) => {
+    if (action === 'grant') {
+      const result = await grantFpsAccess();
+      log.info(`fps access: ${result}`);
+      return result;
+    }
+    if (action === 'logoff') {
+      log.info('fps access: signing out of Windows');
+      logOffWindows();
+      return 'granted' as const;
+    }
+    return fpsGroupState();
   });
   ipcMain.on(IPC.openLogFolder, () => void shell.openPath(app.getPath('userData')));
   ipcMain.handle(IPC.saveReport, async () => {

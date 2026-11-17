@@ -25,6 +25,7 @@ const api: OverlayApi = {
   quitApp: () => ipcRenderer.send(IPC.quitApp),
   dismissDeath: () => ipcRenderer.send(IPC.dismissDeath),
   importPetTracker: () => ipcRenderer.invoke(IPC.importPetTracker),
+  fpsAccess: (action) => ipcRenderer.invoke(IPC.fpsAccess, action),
   openLogFolder: () => ipcRenderer.send(IPC.openLogFolder),
   saveReport: () => ipcRenderer.invoke(IPC.saveReport),
   checkUpdate: () => ipcRenderer.send(IPC.checkUpdate),

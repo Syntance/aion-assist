@@ -567,6 +567,8 @@ export interface OverlayApi {
   getPets(): Promise<PetRow[]>;
   /** Opens the folder with the app's data and logs. */
   openLogFolder(): void;
+  /** Frame-tracing permission: check whether the user is in the "Performance Log Users" group, add them (one UAC prompt), or sign out of Windows. */
+  fpsAccess(action: 'check' | 'grant' | 'logoff'): Promise<'member' | 'notMember' | 'unknown' | 'granted' | 'cancelled' | 'error'>;
   /** Asks where to save a diagnostic report (versions, state, settings, recent log); resolves to the saved path or null. */
   saveReport(): Promise<string | null>;
   checkUpdate(): void;

@@ -33,16 +33,19 @@ export interface OpponentGroup {
   lastAt: number;
 }
 
-/** Who won a fight: the kill / death record inside it; without one, unknown. */
-export function fightResult(fight: EncounterSummary, kills: readonly KillEntry[]): FightResult {
+/**
+ * Who won a fight: the kill / death record inside it; without one, unknown. With `who` set, only that player counts:
+ * a win is a kill of them, a loss is a death to them (so a group fight does not credit everyone in it).
+ */
+export function fightResult(fight: EncounterSummary, kills: readonly KillEntry[], who: string | null = null): FightResult {
   const from = fight.startedAt - KILL_SLACK_BEFORE_MS;
   const to = fight.startedAt + fight.durationMs + KILL_SLACK_AFTER_MS;
   let won = 0;
   let lost = 0;
   for (const k of kills) {
     if (k.at < from || k.at > to) continue;
-    if (k.kind === 'kill') won++;
-    else if (k.kind === 'death') lost++;
+    if (k.kind === 'kill' && (who === null || k.victim === who)) won++;
+    else if (k.kind === 'death' && (who === null || k.killer === who)) lost++;
   }
   if (won === lost) return 'unknown';
   return won > lost ? 'win' : 'loss';
@@ -53,8 +56,8 @@ export function groupByOpponent(fights: readonly EncounterSummary[], kills: read
   const groups = new Map<string, OpponentGroup>();
   for (const fight of fights) {
     const names = [...new Set(fight.opponents ?? [])];
-    const result = fightResult(fight, kills);
     for (const name of names.length > 0 ? names : [null]) {
+      const result = fightResult(fight, kills, name);
       const key = name ?? '';
       let g = groups.get(key);
       if (!g) {

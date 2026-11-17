@@ -5,7 +5,7 @@ import type { EncounterSummary, KillEntry } from '../src/shared/types';
 const fight = (id: string, startedAt: number, opponents: string[], total = 1000, theirs = 500): EncounterSummary => ({
   id, startedAt, durationMs: 20_000, total, npcCode: null, npcMaxHp: null, players: 1, top: null, theirsTotal: theirs, opponents,
 });
-const kill = (at: number, kind: 'kill' | 'death'): KillEntry => ({ at, kind, killer: 'a', victim: 'b', skill: null });
+const kill = (at: number, kind: 'kill' | 'death', who = 'Beb0p'): KillEntry => ({ at, kind, killer: kind === 'death' ? who : 'me', victim: kind === 'kill' ? who : 'me', skill: null });
 
 describe('groupByOpponent', () => {
   it('groups one player across any gap and sums the results', () => {
@@ -22,6 +22,14 @@ describe('groupByOpponent', () => {
     const groups = groupByOpponent([fight('1', 0, ['A', 'B', 'C'])], []);
     expect(groups.map((g) => g.label).sort()).toEqual(['A', 'B', 'C']);
     expect(groups.every((g) => g.fights.length === 1 && g.fights[0]?.opponents === 3)).toBe(true);
+  });
+
+  it('credits a kill or death only to the player it names, not to everyone in a group fight', () => {
+    const groups = groupByOpponent([fight('1', 0, ['A', 'B', 'C'])], [kill(5_000, 'kill', 'B'), kill(8_000, 'death', 'C')]);
+    const by = (name: string) => groups.find((g) => g.label === name);
+    expect([by('A')?.wins, by('A')?.losses]).toEqual([0, 0]);
+    expect([by('B')?.wins, by('B')?.losses]).toEqual([1, 0]);
+    expect([by('C')?.wins, by('C')?.losses]).toEqual([0, 1]);
   });
 
   it('keeps unknown opponents in their own group', () => {

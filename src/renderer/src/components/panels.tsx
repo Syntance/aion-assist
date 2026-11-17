@@ -154,7 +154,7 @@ function FpsBadge({ fps }: { fps: OverlaySnapshot['fps'] }) {
   const tone = v === null ? 'text-ink-mute' : v >= 60 ? 'text-good' : v >= 30 ? 'text-warm' : 'text-bad';
   const note =
     fps.state === 'denied'
-      ? 'Brak uprawnień do śledzenia klatek: dodaj swoje konto do grupy „Użytkownicy dzienników wydajności" (Performance Log Users) albo uruchom aplikację jako administrator. Szczegóły w Ustawieniach.'
+      ? 'Brak uprawnień do śledzenia klatek: wystarczy jednorazowo kliknąć „Włącz pomiar FPS” w oknie aplikacji (przycisk na pasku zadań) albo w Ustawieniach.'
       : fps.state === 'error'
         ? 'Nie udało się uruchomić śledzenia klatek gry.'
         : 'FPS gry: klatki, które gra faktycznie wyświetla (z zdarzeń Windows, bez ingerencji w grę).';
