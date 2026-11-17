@@ -15,14 +15,22 @@ $env:GH_TOKEN = (gh auth token)
 ## Każda nowa wersja
 
 1. Podnieś `version` w `package.json` (np. `0.1.1`). Aktualizacja działa tylko wtedy, gdy numer jest wyższy od zainstalowanego.
-2. Sprawdź jakość i opublikuj:
+2. Sprawdź jakość, zatwierdź zmiany i wypchnij je razem z tagiem wersji (GitHub nie utworzy wydania bez istniejącego tagu):
 
 ```powershell
 pnpm typecheck; pnpm lint; pnpm test
+git add -A; git commit -m "Wersja 0.1.1"; git push
+git tag v0.1.1; git push origin v0.1.1
+```
+
+3. Opublikuj:
+
+```powershell
+$env:GH_TOKEN = (gh auth token)
 pnpm release
 ```
 
-`pnpm release` buduje instalator, tworzy wydanie na GitHubie i wgrywa instalator oraz plik `latest.yml` (z sumą kontrolną, którą aplikacja sprawdza przed instalacją).
+`pnpm release` buduje instalator, tworzy wydanie na GitHubie i wgrywa instalator, `latest.yml` (z sumą kontrolną, którą aplikacja sprawdza przed instalacją) i blockmap. Po wydaniu sprawdź, że `latest.yml` w wydaniu zgadza się z instalatorem (suma `sha512` i `size`); gdyby publikacja przerwała się w połowie, `pnpm release` zbuduje instalator od nowa, więc przed ponowną próbą uruchom go jeszcze raz w całości.
 
 ## Co znajomy powinien wiedzieć
 
