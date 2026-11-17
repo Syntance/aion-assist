@@ -1,5 +1,16 @@
 # Aion Assist
 
+<p align="center">
+  <a href="https://github.com/Syntance/aion-assist/releases/latest"><img src="https://img.shields.io/github/v/release/Syntance/aion-assist?label=wersja&color=2dd4bf&style=for-the-badge" alt="Najnowsza wersja"></a>
+  <a href="https://github.com/Syntance/aion-assist/releases/latest/download/Aion-Assist-Setup-0.1.0.exe"><img src="https://img.shields.io/badge/POBIERZ_INSTALATOR-Windows_x64-2dd4bf?style=for-the-badge&logo=windows&logoColor=white" alt="Pobierz instalator dla Windows"></a>
+</p>
+
+> **Pobieranie:** [**Aion-Assist-Setup-0.1.0.exe**](https://github.com/Syntance/aion-assist/releases/latest/download/Aion-Assist-Setup-0.1.0.exe) · [wszystkie wydania](https://github.com/Syntance/aion-assist/releases)
+>
+> 1. Zainstaluj [Npcap](https://npcap.com/#download) (jeśli go nie masz).
+> 2. Uruchom instalator. Windows pokaże ostrzeżenie SmartScreen, bo instalator nie jest podpisany: kliknij **Więcej informacji → Uruchom mimo to**.
+> 3. Uruchom Aion Assist i zaloguj postać w grze. Kolejne wersje pobierają się same.
+
 Przezroczysta nakładka (Electron + React + Tailwind) dla AION 2: licznik DPS drużyny, panel PvP z K/D/A, karta celu i dzienne liczniki Abyss.
 
 Aplikacja **wyłącznie nasłuchuje** własnego ruchu sieciowego przez Npcap i używa zwykłych funkcji okien Windows. Nie czyta pamięci gry, nie wstrzykuje kodu, nie wysyła nic do serwerów gry i nie automatyzuje klawiatury ani myszy.
