@@ -62,6 +62,8 @@ export interface EngineStore {
   daily: Record<string, DailyRecord>;
   /** Who killed whom (only kills involving you), oldest first, capped; saved with the other statistics. */
   killLog?: KillEntry[];
+  /** Last known Odyle energy per character (the game only sends it at login and when it changes). */
+  odyle?: Record<string, { basic: number; charged: number; at: number }>;
 }
 
 const KILL_LOG_MAX = 400;
@@ -85,6 +87,8 @@ export interface LookupResult {
 export interface EngineContext {
   players: Extract<GameEvent, { t: 'player' }>[];
   party: Extract<GameEvent, { t: 'party' }> | null;
+  /** Which NPC code each entity in view has (so a target keeps its name after a restart). */
+  npcs: { id: number; code: number }[];
 }
 
 export interface EngineOptions {
@@ -407,6 +411,34 @@ export class Engine {
     return { at: d.at, killer: d.killer, killerCard: d.killer ? this.card(d.killer) : null, registered: d.registered, candidates };
   }
 
+  private odyleNow: { basic: number; charged: number; at: number } | null = null;
+
+  private restoreOdyle(name: string): void {
+    const saved = this.opts.store.odyle?.[name];
+    if (saved && (this.odyleNow === null || this.odyleNow.at < saved.at)) this.odyleNow = saved;
+    if (this.odyleNow) this.saveOdyle(name);
+  }
+
+  private saveOdyle(name: string): void {
+    if (!this.odyleNow) return;
+    const book = (this.opts.store.odyle ??= {});
+    book[name] = this.odyleNow;
+    this.dirty = true;
+  }
+
+  private onOdyle(ev: Extract<GameEvent, { t: 'odyle' }>, now: number): void {
+    const prev = this.odyleNow;
+    // an update for one pool keeps the other; the login list is complete, so a pool it lacks is 0
+    const basic = ev.basic ?? (ev.snapshot ? 0 : (prev?.basic ?? 0));
+    const charged = ev.charged ?? (ev.snapshot ? 0 : (prev?.charged ?? 0));
+    this.odyleNow = { basic, charged, at: now };
+    if (this.selfName) this.saveOdyle(this.selfName);
+  }
+
+  odyleSnapshot(): { basic: number; charged: number; at: number } | null {
+    return this.odyleNow;
+  }
+
   /** Hand-entered correction against one player: +1 kill, +1 death, or undo the last manual entry of that kind. */
   manualKda(name: string, action: KdaAction, now: number): void {
     const me = this.selfName ?? SELF_FALLBACK_NAME;
@@ -485,6 +517,7 @@ export class Engine {
         this.selfId = ev.id;
         if (ev.name) {
           this.selfName = ev.name;
+          this.restoreOdyle(ev.name);
           const profile = this.profile(ev.name);
           profile.server = ev.server ?? profile.server;
           profile.className = classFromCode(ev.classCode) ?? profile.className;
@@ -622,6 +655,9 @@ export class Engine {
       case 'kill':
         this.onKill(ev, now);
         break;
+      case 'odyle':
+        this.onOdyle(ev, now);
+        break;
       case 'mobKill':
         this.countRunDeath(ev.target, 1, now); // a monster killed one of ours (or a stranger: filtered by side)
         break;
@@ -673,6 +709,7 @@ export class Engine {
         if (this.lobby) this.lobby.dismissed = true; // loading screen: the expedition is starting
         break;
       case 'npc':
+        if (this.npcCodes.get(ev.id) !== ev.code) this.contextDirty = true;
         this.npcCodes.set(ev.id, ev.code);
         if (this.npcCodes.size > 800) this.npcCodes.delete(this.npcCodes.keys().next().value as number);
         break;
@@ -749,12 +786,13 @@ export class Engine {
   }
 
   exportContext(): EngineContext {
-    return { players: [...this.playerRecords.values()], party: this.lastParty };
+    return { players: [...this.playerRecords.values()], party: this.lastParty, npcs: [...this.npcCodes].map(([id, code]) => ({ id, code })) };
   }
 
   /** Replays saved records as if they had just arrived (same connection, app restarted). */
   restoreContext(ctx: EngineContext, now: number): void {
     for (const rec of ctx.players) this.apply(rec, now);
+    for (const n of ctx.npcs) this.apply({ t: 'npc', id: n.id, code: n.code }, now);
     if (ctx.party) this.apply(ctx.party, now);
     this.contextDirty = false;
   }

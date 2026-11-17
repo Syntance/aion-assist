@@ -747,3 +747,18 @@ describe('demo source', () => {
     expect(engine.dailySnapshot(now).apGained).toBeGreaterThan(0);
   });
 });
+
+
+describe('context restore', () => {
+  it('keeps the NPC codes of entities in view across a restart', () => {
+    const a = new Engine({ store: { rivals: {}, daily: {} }, fightIdleMs: () => 8000, npcName: (c) => (c === 2_400_035 ? 'Melee Training Scarecrow' : null) });
+    a.apply({ t: 'npc', id: 777, code: 2_400_035 }, 1000);
+    const ctx = a.exportContext();
+    expect(ctx.npcs).toEqual([{ id: 777, code: 2_400_035 }]);
+    const b = new Engine({ store: { rivals: {}, daily: {} }, fightIdleMs: () => 8000, npcName: (c) => (c === 2_400_035 ? 'Melee Training Scarecrow' : null) });
+    b.restoreContext(ctx, 2000);
+    b.apply({ t: 'self', id: 1, name: 'Me', server: 1318, classCode: 18, level: 45 }, 2001);
+    b.apply({ t: 'damage', actor: 1, target: 777, skill: 13_010_240, amount: 500, crit: false, back: false, dot: false }, 2100);
+    expect(b.meterSnapshot(2200).focus).toMatchObject({ id: 777, code: 2_400_035, name: 'Melee Training Scarecrow' });
+  });
+});

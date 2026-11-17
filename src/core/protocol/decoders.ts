@@ -2,6 +2,7 @@ import type { GameEvent, RosterMember } from './events';
 import { PET_ROWS } from '../pets/petData';
 import type { OpcodeTable } from './opcodes';
 import { DecodeError, Reader, decodeName, peekU16, peekU32 } from './reader';
+import { readVarInt } from './varint';
 
 /**
  * Packet decoders. Each takes a payload (opcode at bytes 0..1) and returns an event or
@@ -288,6 +289,32 @@ function decodePetBatch(p: Uint8Array, kind: 'petSouls' | 'petSpent'): GameEvent
   return { t: kind, entries };
 }
 
+// --- Odyle energy (ticket id 60000001) ----------------------------------------------------------
+
+const ODYLE_ID = [0x01, 0x87, 0x93, 0x03]; // 60000001 as u32 LE
+const POOL_BASIC = 0x04;
+const POOL_CHARGED = 0x08;
+
+/**
+ * Finds the Odyle entry `<pool u8> 01 87 93 03 <value varint>` in a ticket packet. The id is a specific four-byte
+ * value, so a plain search is safe; the pool byte before it says which balance the value is.
+ */
+function decodeOdyle(p: Uint8Array, snapshot: boolean): GameEvent | null {
+  let basic: number | null = null;
+  let charged: number | null = null;
+  for (let i = 1; i + 4 < p.length; i++) {
+    if (p[i] !== ODYLE_ID[0] || p[i + 1] !== ODYLE_ID[1] || p[i + 2] !== ODYLE_ID[2] || p[i + 3] !== ODYLE_ID[3]) continue;
+    const pool = p[i - 1];
+    if (pool !== POOL_BASIC && pool !== POOL_CHARGED) continue;
+    const v = readVarInt(p, i + 4);
+    if (v.size < 0 || v.value > 100_000) continue;
+    if (pool === POOL_BASIC) basic = v.value;
+    else charged = v.value;
+  }
+  if (basic === null && charged === null) return snapshot ? { t: 'odyle', snapshot, basic: null, charged: null } : null;
+  return { t: 'odyle', snapshot, basic, charged };
+}
+
 function decodePetRank(p: Uint8Array): GameEvent | null {
   const b = p.subarray(2);
   if (b.length !== 23 || b[0] !== 0 || b[1] !== 0) return null;
@@ -482,6 +509,8 @@ export class PacketDecoder {
   private readonly table = new Map<number, Decoder>();
   private readonly playerHi: number;
   private readonly playerLo: number;
+  private readonly npcHi: number;
+  private readonly npcLo: number;
   /** Opcode -> packets seen; lets the diagnostics view show what a new patch changed. */
   readonly seen = new Map<number, number>();
   /** Opcode -> packets that decoded into an event (seen minus rejected). */
@@ -490,6 +519,8 @@ export class PacketDecoder {
   constructor(opcodes: OpcodeTable) {
     this.playerHi = opcodes.playerInfo >> 8;
     this.playerLo = opcodes.playerInfo & 0xff;
+    this.npcHi = opcodes.npcSpawn >> 8;
+    this.npcLo = opcodes.npcSpawn & 0xff;
     this.table.set(opcodes.heartbeat, (p) =>
       p.length >= 10 ? { t: 'heartbeat', clock: new Reader(p, 2).u64() } : null,
     );
@@ -502,6 +533,8 @@ export class PacketDecoder {
     this.table.set(opcodes.petSouls, (p) => decodePetBatch(p, 'petSouls'));
     this.table.set(opcodes.petSpent, (p) => decodePetBatch(p, 'petSpent'));
     this.table.set(opcodes.petRank, decodePetRank);
+    this.table.set(opcodes.ticketSnapshot, (p) => decodeOdyle(p, true));
+    this.table.set(opcodes.ticketUpdate, (p) => decodeOdyle(p, false));
     this.table.set(opcodes.teleport, decodeTeleport);
     this.table.set(opcodes.partyRoster, decodePartyRoster);
     this.table.set(opcodes.partyLeftWorld, () => ({ t: 'partyLeft' }));
@@ -527,6 +560,35 @@ export class PacketDecoder {
       if (id < MIN_ENTITY_ID || r.remaining !== 2 || r.u8() !== 0x02 || r.u8() !== 0x00) return null;
       return { t: 'entityPlaced', id };
     });
+  }
+
+  /**
+   * NPC appearances also arrive inside larger packets (the NPCs already standing in an area when you enter it), not only as
+   * standalone frames. Scans for the NPC opcode and keeps only records with a plausible entity, a valid NPC code and the
+   * fixed marker byte, the same checks PetTracker uses.
+   */
+  embeddedNpcs(payload: Uint8Array): GameEvent[] {
+    const out: GameEvent[] = [];
+    const hi = this.npcHi;
+    const lo = this.npcLo;
+    for (let i = 2; i + 14 <= payload.length; i++) {
+      if (payload[i] !== hi || payload[i + 1] !== lo) continue;
+      const rec = payload.subarray(i + 2);
+      const ent = readVarInt(rec, 0);
+      if (ent.size < 0 || ent.value < MIN_ENTITY_ID || ent.size + 3 > rec.length) continue;
+      let p = ent.size;
+      if ((rec[p] & 0x1f) === 0x1f) continue; // a summon
+      p += 3;
+      for (const at of [p + 2, p]) {
+        if (at + 6 > rec.length) continue;
+        const code = (rec[at] | (rec[at + 1] << 8) | (rec[at + 2] << 16) | (rec[at + 3] << 24)) >>> 0;
+        if (code >= 2_000_000 && code < 3_000_000 && rec[at + 5] === 2) {
+          out.push({ t: 'npc', id: ent.value, code });
+          break;
+        }
+      }
+    }
+    return out;
   }
 
   /**

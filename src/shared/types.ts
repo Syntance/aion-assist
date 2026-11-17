@@ -32,6 +32,33 @@ export function factionFromServer(server: number | null | undefined): Faction | 
   return null;
 }
 
+/** The built-in colours of the class bars (hex versions of the CSS tokens), the colour of the "JA" tag and its text. */
+export const DEFAULT_CLASS_COLORS: Record<ClassName, string> = {
+  gladiator: '#d24d42',
+  templar: '#4397be',
+  ranger: '#40a35c',
+  assassin: '#8951bf',
+  spiritmaster: '#00a29f',
+  sorcerer: '#367ad1',
+  cleric: '#c0a241',
+  chanter: '#db7d24',
+};
+export const DEFAULT_TAG_BG = '#f269cb';
+export const DEFAULT_TAG_TEXT = '#2a0a1d';
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const colorsSchema = z.object({
+  /** Bar colour per class; a class missing here keeps the built-in one. */
+  classes: z.partialRecord(z.enum(CLASS_NAMES), hexColor).default({}),
+  /** Bar colour of your own row; null = your class colour. */
+  self: hexColor.nullable().default(null),
+  /** The "JA" tag next to your name. */
+  tagBg: hexColor.default(DEFAULT_TAG_BG),
+  tagText: hexColor.default(DEFAULT_TAG_TEXT),
+});
+export type ColorSettings = z.infer<typeof colorsSchema>;
+export const DEFAULT_COLORS: ColorSettings = { classes: {}, self: null, tagBg: DEFAULT_TAG_BG, tagText: DEFAULT_TAG_TEXT };
+
 export const PANEL_IDS = ['meter', 'pvp', 'target', 'daily', 'nearby', 'pets'] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
@@ -92,6 +119,8 @@ export const settingsSchema = z.object({
   /** The "you died" pop-up (who killed you, K/D buttons) and when it closes: after a respawn, or only by hand. */
   /** Most players listed per side in the DPS / PvP window (0 = no limit): in mass PvP only the top ones show. */
   maxPlayerRows: z.number().int().min(0).max(100).default(10),
+  /** Custom colours of the class bars, your row and the "JA" tag. */
+  colors: colorsSchema.default(DEFAULT_COLORS),
   deathPopup: z.boolean().default(true),
   deathPopupClose: z.enum(['respawn', 'manual']).default('respawn'),
   /** Record raw game packets to raw_tcp_ours.log (needs a restart; large file, advanced). */
@@ -149,6 +178,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoUpdate: true,
   debugLog: false,
   maxPlayerRows: 10,
+  colors: DEFAULT_COLORS,
   deathPopup: true,
   deathPopupClose: 'respawn',
   rawCapture: false,
@@ -526,6 +556,8 @@ export interface OverlaySnapshot {
   death: DeathSnapshot | null;
   pets: PetsSnapshot;
   update: UpdateSnapshot;
+  /** Odyle energy (basic + charged bonus) as last reported by the game; null until seen. */
+  odyle: { basic: number; charged: number; at: number } | null;
   /** Shortcuts the OS refused to register (taken by another app). */
   hotkeyConflicts: ('pin' | 'edit')[];
   /** The delay the player really has (network + server lateness), in ms. */
@@ -576,6 +608,8 @@ export interface OverlayApi {
   getPets(): Promise<PetRow[]>;
   /** Opens the folder with the app's data and logs. */
   openLogFolder(): void;
+  /** A window the user opened (settings, history, finder, map, detail) is on screen: the mouse works over it without Alt. */
+  setWindowsOpen(open: boolean): void;
   /** Frame-tracing permission: check whether the user is in the "Performance Log Users" group, add them (one UAC prompt), or sign out of Windows. */
   fpsAccess(action: 'check' | 'grant' | 'logoff'): Promise<'member' | 'notMember' | 'unknown' | 'granted' | 'cancelled' | 'error'>;
   /** Asks where to save a diagnostic report (versions, state, settings, recent log); resolves to the saved path or null. */

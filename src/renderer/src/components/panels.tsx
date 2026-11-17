@@ -110,7 +110,7 @@ function LobbySection({ lobby }: { lobby: NonNullable<OverlaySnapshot['lobby']> 
             key={m.card.name}
             card={m.card}
             isSelf={m.isSelf}
-            fill={0}
+            fill={1}
             primary={m.leader ? 'Lider' : m.ready ? 'Gotowy' : 'Niegotowy'}
             secondary={m.card.level ? `poz. ${m.card.level}` : ''}
             tone={m.leader ? 'leader' : m.ready ? 'ready' : 'waiting'}
@@ -174,17 +174,8 @@ type MeterMode = 'boss' | 'pvp' | 'lobby';
  * Bosses / PvP / Lobby switch. The view follows the action by itself (a player fight starts: PvP;
  * a boss fight starts: bosses; a party lobby appears between fights: lobby); a click overrides it.
  */
-function ModeSwitch({
-  mode,
-  onChange,
-  kda,
-  lobbyTab,
-}: {
-  mode: MeterMode;
-  onChange: (m: MeterMode) => void;
-  kda: OverlaySnapshot['pvp'];
-  lobbyTab: boolean;
-}) {
+/** The Bossy / PvP / Lobby switch, shown in the DPS window's header in place of its title. */
+function ModeTabs({ mode, onChange, lobbyTab }: { mode: MeterMode; onChange: (m: MeterMode) => void; lobbyTab: boolean }) {
   const tab = (id: MeterMode, label: string) => (
     <button
       type="button"
@@ -199,22 +190,27 @@ function ModeSwitch({
     </button>
   );
   return (
-    <div className="flex items-center gap-1 px-[7px] pt-[5px]">
-      <div role="tablist" aria-label="Tryb licznika" className="flex gap-0.5 rounded-[7px] bg-panel-head p-0.5">
-        {tab('boss', 'Bossy')}
-        {tab('pvp', 'PvP')}
-        {lobbyTab && tab('lobby', 'Lobby')}
-      </div>
-      {mode === 'pvp' && (
-        <span className="num ml-auto text-[11px] font-semibold" title="Zabójstwa / zgony / asysty z kill recordu">
-          <span className="text-good">{kda.kills}</span> K <span className="text-bad">{kda.deaths}</span> D <span className="text-ink">{kda.assists}</span> A
-        </span>
-      )}
+    <div role="tablist" aria-label="Tryb licznika" className="flex gap-0.5 rounded-[7px] bg-row p-0.5">
+      {tab('boss', 'Bossy')}
+      {tab('pvp', 'PvP')}
+      {lobbyTab && tab('lobby', 'Lobby')}
     </div>
   );
 }
 
 /** The top `max` rows (0 = all); you always stay on the list, taking the last slot when you rank lower. */
+const odyleUrl = import.meta.glob<string>('../assets/items/odyle.webp', { eager: true, query: '?url', import: 'default' })['../assets/items/odyle.webp'];
+
+/** The item icon of Odyle energy (the game's artwork, when present), otherwise a drawn bolt. */
+function OdyleIcon() {
+  if (odyleUrl) return <img src={odyleUrl} alt="" width={16} height={16} className="size-4 drop-shadow-[0_1px_1px_oklch(0.1_0.02_255/0.8)]" draggable={false} />;
+  return (
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-warm" aria-hidden="true">
+      <path d="M9 1.500L3.500 9h4l-1 5.500L12.500 7h-4Z" fill="currentColor" fillOpacity="0.3" />
+    </svg>
+  );
+}
+
 function limitRows<T extends { isSelf: boolean }>(rows: readonly T[], max: number): { shown: T[]; hidden: number } {
   if (max <= 0 || rows.length <= max) return { shown: [...rows], hidden: 0 };
   const shown = rows.slice(0, max);
@@ -229,7 +225,7 @@ function MoreRows({ hidden }: { hidden: number }) {
 }
 
 export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: string, source: string) => void }) {
-  const { meter, capture, daily, self, pvp } = snap;
+  const { meter, capture, self, pvp } = snap;
   const top = meter.rows[0]?.damage ?? 0;
   const meterList = limitRows(meter.rows, snap.settings.maxPlayerRows);
   const lobbyTab = snap.settings.showLobby;
@@ -249,9 +245,9 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
     <Panel
       id="meter"
       title={shownMode === 'pvp' ? 'PvP Combat' : shownMode === 'lobby' ? 'Lobby' : meter.active ? 'Boss Combat' : 'DPS'}
+      heading={<ModeTabs mode={shownMode} onChange={setMode} lobbyTab={lobbyTab} />}
       layout={snap.settings.panels.meter}
       editMode={snap.editMode || snap.altMode}
-      lead={shownMode === 'lobby' ? undefined : <Dot on={shownMode === 'pvp' ? pvp.active : meter.active} />}
       sub={
         shownMode === 'lobby' ? undefined : (
           <span className="num text-[12px] font-semibold text-accent">{clock(shownMode === 'pvp' ? pvp.durationMs : meter.durationMs)}</span>
@@ -259,7 +255,12 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
       }
       aside={
         shownMode === 'pvp' ? (
-          <span className="num text-ink-mute">{compact(pvp.mineTotal)}</span>
+          <>
+            <span className="num font-semibold" title="Zabójstwa / zgony / asysty dzisiaj">
+              <span className="text-good">{pvp.kills}</span> K <span className="text-bad">{pvp.deaths}</span> D <span className="text-ink">{pvp.assists}</span> A
+            </span>
+            <span className="num text-ink-mute">{compact(pvp.mineTotal)}</span>
+          </>
         ) : shownMode === 'lobby' ? (
           lobby && (
             <span className="num" title="Gotowi gracze">
@@ -281,7 +282,6 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
         )
       }
     >
-      <ModeSwitch mode={shownMode} onChange={setMode} kda={pvp} lobbyTab={lobbyTab} />
       {shownMode === 'pvp' ? (
         <PvpBody snap={snap} onDetail={onDetail} />
       ) : shownMode === 'lobby' ? (
@@ -326,14 +326,22 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
         </>
       )}
       <footer className="num mt-auto flex items-center gap-3 border-t border-line bg-panel-head px-2.5 py-1.5 text-[11px] text-ink-dim">
+        <span className="flex shrink-0 items-center" title={capture.detail ?? CAPTURE_TEXT[capture.state]} role="img" aria-label={capture.detail ?? CAPTURE_TEXT[capture.state]}>
+          <Dot on={capture.state === 'locked' || capture.state === 'demo'} />
+        </span>
         <span className="truncate font-semibold text-self">{self?.name ?? '—'}</span>
-        <span title="Abyss Points zdobyte dzisiaj">AP {signed(daily.apGained)}</span>
+        {snap.odyle && (
+          <span
+            className="num flex items-center gap-1"
+            title={`Energia Odyle: podstawowa ${snap.odyle.basic}, naładowana (bonus) +${snap.odyle.charged}. Wartość z ostatniego pakietu gry (logowanie lub zmiana), nie odlicza regeneracji na żywo.`}
+          >
+            <OdyleIcon />
+            <b className="font-semibold text-ink">{snap.odyle.basic}</b>
+            {snap.odyle.charged > 0 && <span className="text-[oklch(0.76_0.13_240)]">(+{snap.odyle.charged})</span>}
+          </span>
+        )}
         {snap.settings.showPing && <PingBadge ping={snap.ping} />}
         {snap.settings.showFps && <FpsBadge fps={snap.fps} />}
-        <span className="ml-auto flex min-w-0 items-center gap-1.5" title={capture.detail ?? undefined}>
-          <Dot on={capture.state === 'locked' || capture.state === 'demo'} />
-          <span className="truncate">{capture.detail ?? CAPTURE_TEXT[capture.state]}</span>
-        </span>
       </footer>
     </Panel>
   );

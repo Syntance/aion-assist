@@ -59,6 +59,8 @@ export type GameEvent =
   | { t: 'petSouls'; entries: { pet: number; amount: number }[] }
   | { t: 'petSpent'; entries: { pet: number; amount: number }[] }
   | { t: 'petRank'; pet: number; rank: number }
+  /** Odyle energy: basic and charged (bonus) balance; `snapshot` = the full list at login, so a missing pool means 0. */
+  | { t: 'odyle'; snapshot: boolean; basic: number | null; charged: number | null }
   | { t: 'partyLeft' }
   | { t: 'abyssPoints'; points: number; limit: number }
   | { t: 'mapLoad'; mapId: number }

@@ -26,6 +26,7 @@ import { Logger } from './log';
 import { Updater } from './updater';
 import { Armory } from './armory';
 import { NpcCatalog } from './catalog';
+import { NPC_SEED } from './data/npcSeed';
 import { importCatalogFromAbyss } from './catalogImport';
 import { FpsMeter } from './fps';
 import { HistoryStore, NamesStore } from './history';
@@ -34,7 +35,7 @@ import { readPetTrackerProfiles } from './petTrackerImport';
 import { readContext, readIdentity, readOpcodeOverrides, Store, writeContext, writeIdentity } from './store';
 import { acceleratorLabel } from '@shared/keys';
 import { onlySent } from '@shared/patch';
-import { getCursorState, getForegroundWindow } from './win32';
+import { focusWindow, getCursorState, getForegroundWindow } from './win32';
 
 const POLL_MS = 150;
 const SNAPSHOT_MS = 250;
@@ -64,6 +65,10 @@ let textInput = false;
 const altMode = false;
 /** Rectangles (window DIP coords) that catch clicks; the rest of the window is click-through. */
 let hitRects: { x: number; y: number; w: number; h: number }[] = [];
+/** A window opened by the user is on screen: the mouse works over it without holding Alt (the game's cursor may be hidden). */
+let windowsOpen = false;
+/** The game's window, remembered so the focus can go back to it when the overlay's own windows close. */
+let gameHwnd: bigint | null = null;
 /** A drag is running: keep the mouse captured even outside the rectangles. */
 let forceCapture = false;
 let capturing = false;
@@ -117,7 +122,7 @@ function main(): void {
     else if (fpsMeter.state !== 'off') fpsMeter.stop();
   };
   syncFps();
-  const catalog = new NpcCatalog(app.getPath('userData'));
+  const catalog = new NpcCatalog(app.getPath('userData'), NPC_SEED);
   /** A name you typed wins over the catalog's. */
   const npcName = (code: number): string | null => names.get().npcs[String(code)] ?? catalog.npc(code)?.name ?? null;
 
@@ -154,7 +159,8 @@ function main(): void {
    * exactly can make Windows think a full-screen app is running (it then hides the taskbar and stops
    * notifications); one pixel short, it never does.
    */
-  const overlayBounds = (b: Electron.Rectangle): Electron.Rectangle => ({ x: b.x, y: b.y, width: b.width, height: b.height - 1 });
+  /** One pixel short of the screen, so Windows does not take the overlay for a fullscreen app (that hides the taskbar in a windowed game). */
+  const overlayBounds = (b: Electron.Rectangle, cover = false): Electron.Rectangle => ({ x: b.x, y: b.y, width: b.width, height: cover ? b.height : b.height - 1 });
   const display = screen.getPrimaryDisplay();
   win = new BrowserWindow({
     ...overlayBounds(display.bounds),
@@ -240,6 +246,7 @@ function main(): void {
       death: settings().deathPopup ? engine.deathSnapshot(now, settings().deathPopupClose === 'respawn') : null,
       pets: pets.snapshot(now, settings().petsMode),
       update: updater.snapshot,
+      odyle: engine.odyleSnapshot(),
       hotkeyConflicts,
       ping: engine.pingSnapshot(now),
       fps: demoMode ? { value: 96 + Math.round(Math.sin(now / 1500) * 6), state: 'running' } : { value: fpsMeter.value(now), state: fpsMeter.state },
@@ -279,9 +286,11 @@ function main(): void {
 
   function poll(): void {
     const fg = getForegroundWindow();
-    const focused = textInput || (fg !== null && fg.title.toLowerCase().includes(settings().gameTitle.toLowerCase()));
-    if (focused && !textInput && fg?.rect && !editMode && !pinned) followGameWindow(fg.rect);
-    if (focused && !textInput && fg?.pid != null) fpsMeter.setPid(fg.pid);
+    const focused = textInput || windowsOpen || (fg !== null && fg.title.toLowerCase().includes(settings().gameTitle.toLowerCase()));
+    const overlayHasFocus = textInput || windowsOpen;
+    if (fg && !overlayHasFocus && fg.title.toLowerCase().includes(settings().gameTitle.toLowerCase())) gameHwnd = fg.hwnd;
+    if (focused && !overlayHasFocus && fg?.rect && !editMode && !pinned) followGameWindow(fg.rect);
+    if (focused && !overlayHasFocus && fg?.pid != null) fpsMeter.setPid(fg.pid);
     let next = editMode || pinned;
     if (!next && focused) next = !(settings().hideOnCursor && getCursorState().visible);
     if (overlayMode === 'show') next = true;
@@ -308,7 +317,7 @@ function main(): void {
     if (!over && gameFocused) {
       const cur = getCursorState();
       // only meaningful while a cursor exists: Alt held or a menu open
-      if (cur.visible || altMode) {
+      if (cur.visible || altMode || windowsOpen) {
         const dip = screen.screenToDipPoint({ x: cur.x, y: cur.y });
         const b = win.getBounds();
         const x = dip.x - b.x;
@@ -334,6 +343,7 @@ function main(): void {
       capturing = false;
       win.setFocusable(false);
       win.blur();
+      if (gameHwnd !== null) focusWindow(gameHwnd);
       store.save();
     }
     poll();
@@ -535,6 +545,25 @@ function main(): void {
   ipcMain.on(IPC.resetPvp, () => engine.resetPvp());
   ipcMain.on(IPC.exitEdit, () => setEditMode(false));
   // Rectangles that catch clicks (reported by the renderer) and drag capture
+  ipcMain.on(IPC.setWindowsOpen, (_e, open: unknown) => {
+    if (typeof open !== 'boolean' || open === windowsOpen || !win) return;
+    windowsOpen = open;
+    // While the overlay has the focus it covers the whole screen: the taskbar would otherwise pop up over the game
+    // when the game is no longer the foreground window.
+    win.setBounds(overlayBounds(screen.getDisplayMatching(win.getBounds()).bounds, open));
+    // The overlay takes the keyboard focus while its windows are open: a game in the foreground keeps the mouse
+    // pinned to the middle of the screen (mouse-look), so the pointer could never reach the windows.
+    if (open) {
+      win.setFocusable(true);
+      win.focus();
+    } else if (!editMode && !textInput) {
+      win.setFocusable(false);
+      win.blur();
+      if (gameHwnd !== null) focusWindow(gameHwnd); // the focus goes back to the game, so the overlay keeps showing
+    }
+    poll();
+    push();
+  });
   ipcMain.on(IPC.hitRects, (_e, raw: unknown) => {
     const parsed = hitRectsSchema.safeParse(raw);
     if (parsed.success) hitRects = parsed.data;
@@ -615,7 +644,7 @@ function main(): void {
     if (next) {
       win.setFocusable(true);
       win.focus();
-    } else if (!editMode) {
+    } else if (!editMode && !windowsOpen) {
       win.setFocusable(false);
       win.blur();
     }

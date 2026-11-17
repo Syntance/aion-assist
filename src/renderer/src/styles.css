@@ -47,6 +47,33 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Scrollbars in the overlay's own style: slim, rounded, no arrows, a teal thumb on hover */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.42 0.035 235 / 0.75);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.82 0.12 188 / 0.85);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: oklch(0.82 0.12 188);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-corner {
+  display: none;
+}
+
 .num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1, 'cv11' 1;

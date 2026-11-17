@@ -155,6 +155,7 @@ export class CapturePipeline {
       if (event?.t === 'heartbeat') delay.onHeartbeat(event.clock, this.now);
       if (event) this.onEvent(event);
       for (const embedded of this.decoder.embeddedPlayers(payload)) this.onEvent(embedded);
+      for (const embedded of this.decoder.embeddedNpcs(payload)) this.onEvent(embedded);
     });
     const reassembler = new TcpReassembler(
       (data) => framer.push(data),

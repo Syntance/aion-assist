@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PetRow } from '@shared/pets';
 import { FamilyChip, PetPortrait } from './PetIcon';
+import { loadSpawns, petsWithMap } from './PetMap';
 import { PinButton, progressText, RankPips } from './PetsPanel';
 
 const FAMILIES = ['Cogni', 'Fera', 'Natura', 'Varian', 'Special'] as const;
@@ -37,7 +38,15 @@ function matchesRank(p: PetRow, f: RankFilter): boolean {
 const select = 'rounded-[6px] border border-line bg-panel-head px-1.5 py-1 text-[11px] text-ink';
 
 /** Every pet in one searchable list: rank, souls to the next rank, and where it comes from. */
-export function PetFinderWindow({ onClose }: { onClose: () => void }) {
+export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap: (pet: { id: number; name: string }) => void }) {
+  const [mapIds, setMapIds] = useState<Set<number> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void loadSpawns().then((d) => alive && setMapIds(petsWithMap(d)));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [pets, setPets] = useState<PetRow[] | null>(null);
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState('');
@@ -72,7 +81,7 @@ export function PetFinderWindow({ onClose }: { onClose: () => void }) {
     <section
       data-hit="pets"
       aria-label="Wyszukiwarka petów"
-      className="absolute left-1/2 top-[64px] z-20 flex max-h-[78vh] w-[520px] -translate-x-1/2 flex-col overflow-hidden rounded-[10px] bg-panel shadow-[0_14px_44px_oklch(0.1_0.02_255/0.65)] ring-1 ring-line"
+      className="flex max-h-[78vh] w-[520px] shrink-0 flex-col overflow-hidden rounded-[10px] bg-panel shadow-[0_14px_44px_oklch(0.1_0.02_255/0.65)] ring-1 ring-line"
     >
       <header className="flex items-center gap-2 bg-panel-head px-3 py-2">
         <h2 className="m-0 text-[14px] font-bold">Zwierzaki</h2>
@@ -143,6 +152,17 @@ export function PetFinderWindow({ onClose }: { onClose: () => void }) {
                       {p.remaining !== null && p.remaining > 0 && <span className="text-[10px] text-ink-mute">brakuje {p.remaining}</span>}
                       <span className={`w-[78px] text-right font-bold ${prog.tone}`}>{prog.text}</span>
                     </button>
+                    {mapIds?.has(p.id) && (
+                      <button
+                        type="button"
+                        title="Pokaż spawny na mapie"
+                        aria-label={`Mapa: ${p.name}`}
+                        onClick={() => onMap({ id: p.id, name: p.name })}
+                        className="grid h-5 shrink-0 place-items-center rounded-[4px] px-1.5 text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
+                      >
+                        Mapa
+                      </button>
+                    )}
                     <PinButton pet={p} />
                   </div>
                   {open && (

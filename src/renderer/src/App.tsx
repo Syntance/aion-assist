@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { OverlaySnapshot } from '@shared/types';
+import { CLASS_NAMES, type OverlaySnapshot } from '@shared/types';
 import { DetailWindow } from './components/Detail';
 import { DeathPopup } from './components/DeathPopup';
 import { PetFinderWindow } from './components/PetFinder';
+import { PetMapWindow } from './components/PetMap';
 import { PetsPanel } from './components/PetsPanel';
 import { HistoryWindow, PlayersWindow } from './components/History';
 import { ViewContext } from './components/Panel';
@@ -21,6 +22,23 @@ export function App() {
   const [detail, setDetail] = useState<{ name: string; source: string } | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [petsOpen, setPetsOpen] = useState(false);
+  const [mapPet, setMapPet] = useState<{ id: number; name: string } | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
+  const colors = snap?.settings.colors;
+  useEffect(() => {
+    // custom colours become CSS variables on the page root (class bars, your row, the "JA" tag)
+    if (!colors) return;
+    const root = document.documentElement.style;
+    for (const c of CLASS_NAMES) {
+      const v = colors.classes[c];
+      if (v) root.setProperty(`--color-cls-${c}`, v);
+      else root.removeProperty(`--color-cls-${c}`);
+    }
+    if (colors.self) root.setProperty('--self-bar', colors.self);
+    else root.removeProperty('--self-bar');
+    root.setProperty('--self-tag-bg', colors.tagBg);
+    root.setProperty('--self-tag-text', colors.tagText);
+  }, [colors]);
   const rootRef = useRef<HTMLElement>(null);
   const bgOpacity = snap?.settings.opacity;
   useEffect(() => {
@@ -28,6 +46,10 @@ export function App() {
     if (bgOpacity !== undefined) rootRef.current?.style.setProperty('--bg-alpha', String(bgOpacity));
   }, [bgOpacity]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const anyWindowOpen = settingsOpen || historyOpen || detail !== null || petsOpen || mapOpen;
+  useEffect(() => {
+    window.overlay.setWindowsOpen(anyWindowOpen);
+  }, [anyWindowOpen]);
   const [encounterId, setEncounterId] = useState<string | null>(null);
   useEffect(() => window.overlay.onSnapshot(setSnap), []);
   // Text boxes (rename, game title) need real keyboard focus; the overlay window is not focusable otherwise.
@@ -53,7 +75,7 @@ export function App() {
     if (!snap) return;
     const toolbarShown = isToolbarShown(snap);
     const rects = [...document.querySelectorAll<HTMLElement>('[data-hit]')]
-      .filter((el) => (el.dataset.hit === 'toolbar' || el.dataset.hit === 'history' || el.dataset.hit === 'players' || el.dataset.hit === 'detail' || el.dataset.hit === 'settings' || el.dataset.hit === 'death' || el.dataset.hit === 'pets' || el.dataset.hit === 'panel-pinned' ? toolbarShown : snap.visible))
+      .filter((el) => (el.dataset.hit === 'toolbar' || el.dataset.hit === 'history' || el.dataset.hit === 'players' || el.dataset.hit === 'detail' || el.dataset.hit === 'settings' || el.dataset.hit === 'death' || el.dataset.hit === 'pets' || el.dataset.hit === 'petmap' || el.dataset.hit === 'panel-pinned' ? toolbarShown : snap.visible))
       .map((el) => el.getBoundingClientRect())
       .map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }));
     const key = JSON.stringify(rects);
@@ -77,13 +99,45 @@ export function App() {
         <MeterPanel snap={snap} onDetail={(name, source) => setDetail({ name, source })} />
         <TargetPanel snap={snap} />
         {snap.settings.scanNearby && <NearbyPanel snap={snap} />}
-        <PetsPanel snap={snap} onFinder={() => setPetsOpen(true)} />
+        <PetsPanel
+          snap={snap}
+          onFinder={() => setPetsOpen(true)}
+          onMap={(pet) => {
+            setPetsOpen(true);
+            setMapOpen(true);
+            setMapPet(pet);
+          }}
+        />
       </main>
       {/* Windows opened by the user stay until closed: they do not follow the cursor auto-hide */}
       <div className="absolute inset-0 pointer-events-none" style={{ opacity: toolbarShown ? 1 : 0 }}>
         <div className="pointer-events-auto contents">
           {snap.death && <DeathPopup death={snap.death} />}
-          {petsOpen && <PetFinderWindow onClose={() => setPetsOpen(false)} />}
+          {petsOpen && (
+            <div className="absolute left-1/2 top-[64px] z-20 flex -translate-x-1/2 items-start gap-3">
+              <PetFinderWindow
+                onClose={() => {
+                  setPetsOpen(false);
+                  setMapOpen(false);
+                  setMapPet(null);
+                }}
+                onMap={(pet) => {
+                  setMapOpen(true);
+                  setMapPet(pet);
+                }}
+              />
+              {mapOpen && (
+                <PetMapWindow
+                  pet={mapPet}
+                  onPick={setMapPet}
+                  onClose={() => {
+                    setMapOpen(false);
+                    setMapPet(null);
+                  }}
+                />
+              )}
+            </div>
+          )}
           {settingsOpen && <SettingsWindow snap={snap} onClose={() => setSettingsOpen(false)} />}
           {(historyOpen || detail) && (
             <div className="absolute left-1/2 top-[64px] z-20 flex -translate-x-1/2 items-start gap-3">

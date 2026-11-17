@@ -21,6 +21,7 @@ export const IPC = {
   getPets: 'overlay:pets',
   checkUpdate: 'overlay:update-check',
   openLogFolder: 'overlay:open-logs',
+  setWindowsOpen: 'overlay:windows-open',
   fpsAccess: 'overlay:fps-access',
   saveReport: 'overlay:save-report',
   installUpdate: 'overlay:update-install',

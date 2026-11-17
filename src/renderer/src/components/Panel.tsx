@@ -15,6 +15,8 @@ interface Props {
   /** Before the title (status dot) and right after it (timer). */
   lead?: ReactNode;
   sub?: ReactNode;
+  /** Replaces the visible title (the title stays as the accessible name), e.g. a mode switch. */
+  heading?: ReactNode;
   children: ReactNode;
 }
 
@@ -23,7 +25,7 @@ type Drag = { kind: 'move' | 'resize' | 'height' | 'scale'; startX: number; star
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /** A movable / resizable overlay panel. Dragging only works in edit mode. */
-export function Panel({ id, title, layout, editMode, aside, lead, sub, children }: Props) {
+export function Panel({ id, title, layout, editMode, aside, lead, sub, heading, children }: Props) {
   const [draft, setDraft] = useState<PanelLayout | null>(null);
   const drag = useRef<Drag | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -103,7 +105,8 @@ export function Panel({ id, title, layout, editMode, aside, lead, sub, children 
         onPointerCancel={end}
       >
         {lead}
-        <h2 className="m-0 text-[13px] font-bold tracking-[0.01em] text-ink">{title}</h2>
+        <h2 className={heading ? 'sr-only' : 'm-0 text-[13px] font-bold tracking-[0.01em] text-ink'}>{title}</h2>
+        {heading}
         {sub}
         <div className="ml-auto flex items-center gap-2 text-[11px] text-ink-dim">{aside}</div>
         <button
@@ -120,7 +123,7 @@ export function Panel({ id, title, layout, editMode, aside, lead, sub, children 
           </svg>
         </button>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-color:var(--color-line)_transparent] [scrollbar-width:thin]">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
       {editMode && (
         <>
           <div

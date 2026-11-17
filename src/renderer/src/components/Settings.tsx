@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { CLASS_LEGEND, ClassIcon } from './ClassIcon';
 import { FpsAccess } from './FpsAccess';
 import { acceleratorLabel, buildAccelerator, DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator, MODIFIERS, splitAccelerator } from '@shared/keys';
-import { PANEL_IDS, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
+import { DEFAULT_CLASS_COLORS, DEFAULT_COLORS, DEFAULT_TAG_BG, DEFAULT_TAG_TEXT, PANEL_IDS, type ColorSettings, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
 
 const PANEL_LABEL: Record<PanelId, string> = { meter: 'DPS i PvP', pvp: 'PvP', target: 'Cel', daily: 'Dzisiaj', nearby: 'W pobliżu', pets: 'Zwierzaki' };
 const REGIONS: Settings['region'][] = ['eu', 'nae', 'naw', 'sa', 'asia'];
@@ -73,6 +73,73 @@ function ClassLegend() {
   );
 }
 
+function ColorInput({ value, onChange, label }: { value: string; onChange: (hex: string) => void; label: string }) {
+  return (
+    <input
+      type="color"
+      aria-label={label}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-7 w-10 cursor-pointer rounded-[5px] border border-line bg-panel-head p-0.5"
+    />
+  );
+}
+
+function ColorSettingsSection({ snap }: { snap: OverlaySnapshot }) {
+  const colors = snap.settings.colors;
+  const api = window.overlay;
+  const set = (next: Partial<ColorSettings>) => api.updateSettings({ colors: { ...colors, ...next } });
+  return (
+    <Section title="Kolory">
+      {CLASS_LEGEND.map((c) => (
+        <Row key={c.id} title={c.label}>
+          <span className="flex items-center gap-2">
+            <ClassIcon className={c.id} size={24} />
+            <ColorInput label={`Kolor paska: ${c.label}`} value={colors.classes[c.id] ?? DEFAULT_CLASS_COLORS[c.id]} onChange={(hex) => set({ classes: { ...colors.classes, [c.id]: hex } })} />
+            <button
+              type="button"
+              className={button}
+              disabled={colors.classes[c.id] === undefined}
+              onClick={() => {
+                const { [c.id]: _drop, ...rest } = colors.classes;
+                void _drop;
+                set({ classes: rest });
+              }}
+            >
+              Domyślny
+            </button>
+          </span>
+        </Row>
+      ))}
+      <Row title="Mój pasek" hint="Własny kolor twojego paska w licznikach, niezależnie od klasy. „Kolor klasy” wraca do koloru wybranego wyżej.">
+        <span className="flex items-center gap-2">
+          <ColorInput label="Kolor mojego paska" value={colors.self ?? DEFAULT_CLASS_COLORS.assassin} onChange={(hex) => set({ self: hex })} />
+          <button type="button" className={button} disabled={colors.self === null} onClick={() => set({ self: null })}>
+            Kolor klasy
+          </button>
+        </span>
+      </Row>
+      <Row title="Znaczek „JA”" hint="Tło i kolor napisu znaczka przy twoim nicku.">
+        <span className="flex items-center gap-2">
+          <span className="rounded-[3px] px-1.5 py-0.5 text-[10px] font-extrabold tracking-[0.06em]" style={{ background: colors.tagBg, color: colors.tagText }}>
+            JA
+          </span>
+          <ColorInput label="Tło znaczka JA" value={colors.tagBg} onChange={(hex) => set({ tagBg: hex })} />
+          <ColorInput label="Napis znaczka JA" value={colors.tagText} onChange={(hex) => set({ tagText: hex })} />
+          <button type="button" className={button} onClick={() => set({ tagBg: DEFAULT_TAG_BG, tagText: DEFAULT_TAG_TEXT })}>
+            Domyślne
+          </button>
+        </span>
+      </Row>
+      <Row title="Wszystkie kolory" hint="Przywraca kolory klas, paska i znaczka „JA” do wbudowanych.">
+        <button type="button" className={button} onClick={() => api.updateSettings({ colors: DEFAULT_COLORS })}>
+          Przywróć domyślne
+        </button>
+      </Row>
+    </Section>
+  );
+}
+
 function Look({ snap }: { snap: OverlaySnapshot }) {
   const { settings } = snap;
   const api = window.overlay;
@@ -106,6 +173,7 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
         </Row>
       </Section>
       <ClassLegend />
+      <ColorSettingsSection snap={snap} />
       <Section title="Przezroczystość">
         <Row title="Krycie okien" hint="Przyciemnia tylko tło okien z licznikami (do 5%); napisy i ikony zostają w pełni widoczne. Pasek, historia i ustawienia zawsze mają pełne tło.">
           <span className="flex items-center gap-2.5">
@@ -322,12 +390,12 @@ function CatalogRow() {
   };
   return (
     <Row
-      title="Importuj z zainstalowanego Abyss Logs"
+      title="Uzupełnij z Abyss Logs (opcjonalnie)"
       hint={
         state.message ? (
           <span className={state.ok ? 'text-good' : 'text-bad'}>{state.message}</span>
         ) : (
-          'Gra wysyła tylko numery NPC. Przycisk jednorazowo odczytuje tabelę nazw bossów i instancji z programu Abyss Logs na tym komputerze i zapisuje ją lokalnie (nic nie jest pobierane z internetu). Bez tego bossy to „NPC #numer".'
+          'Gra wysyła tylko numery NPC, a aplikacja ma wbudowaną tabelę nazw bossów, mobów i instancji, więc nie potrzebujesz niczego instalować. Jeśli masz też Abyss Logs, ten przycisk jednorazowo dopisze z niego poziomy trudności instancji i brakujące nazwy (nic nie jest pobierane z internetu).'
         )
       }
     >
@@ -490,7 +558,7 @@ export function SettingsWindow({ snap, onClose, embedded = false }: { snap: Over
       className={
         embedded
           ? 'flex h-full w-full flex-col overflow-hidden bg-panel'
-          : 'absolute left-1/2 top-1/2 z-40 flex h-[min(560px,82vh)] w-[820px] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-panel shadow-[0_20px_60px_oklch(0.1_0.02_255/0.75)] ring-1 ring-line'
+          : 'absolute left-1/2 top-1/2 z-40 flex h-[min(780px,90vh)] w-[1080px] max-w-[96vw] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-panel shadow-[0_20px_60px_oklch(0.1_0.02_255/0.75)] ring-1 ring-line'
       }
     >
       <header className={`flex items-center gap-2 bg-panel-head px-4 py-2.5 ${embedded ? 'hidden' : ''}`}>

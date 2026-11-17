@@ -29,6 +29,8 @@ export const OPCODE_NAMES = [
   'petSouls',
   'petSpent',
   'petRank',
+  'ticketSnapshot',
+  'ticketUpdate',
 ] as const;
 
 export type OpcodeName = (typeof OPCODE_NAMES)[number];
@@ -69,6 +71,10 @@ export const DEFAULT_OPCODES: OpcodeTable = {
   petSpent: 0x0e90,
   /** Rank reached: `u16 0, pet u32, rank u32, ...` (23 bytes). */
   petRank: 0x1490,
+  /** Ticket / energy balances at login: N x (type u8, id u32, value varint, ...). Odyle energy is id 60000001 (type 08 = charged, 04 = basic). */
+  ticketSnapshot: 0x0b61,
+  /** One balance changed: `00 <type u8> <id u32> <value varint> <u8>`. */
+  ticketUpdate: 0x0c61,
 };
 
 /** Parses "04 38" / "0438" into 0x0438. Returns null for anything else. */

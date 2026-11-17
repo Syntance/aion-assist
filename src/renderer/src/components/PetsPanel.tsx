@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { PetRow, PetsSnapshot } from '@shared/pets';
 import type { OverlaySnapshot } from '@shared/types';
 import { Panel } from './Panel';
 import { FamilyChip, PetPortrait } from './PetIcon';
+import { loadSpawns, petsWithMap } from './PetMap';
 
 /** Three pips: how many ranks the pet has. */
 export function RankPips({ rank }: { rank: number | null }) {
@@ -45,7 +47,7 @@ function age(at: number | null, now: number): string {
   return s < 15 ? 'teraz' : s < 90 ? `${s}s temu` : `${Math.round(s / 60)} min temu`;
 }
 
-function PetLine({ pet, mode }: { pet: PetRow; mode: 'recent' | 'nearby' }) {
+function PetLine({ pet, mode, hasMap, onMap }: { pet: PetRow; mode: 'recent' | 'nearby'; hasMap: boolean; onMap: (pet: { id: number; name: string }) => void }) {
   const prog = progressText(pet);
   const fill = pet.rank === 3 ? 1 : pet.souls !== null && pet.goal ? Math.min(1, pet.souls / pet.goal) : 0;
   const max = pet.rank === 3;
@@ -75,6 +77,17 @@ function PetLine({ pet, mode }: { pet: PetRow; mode: 'recent' | 'nearby' }) {
           {prog.text.replace('/', ' / ')}
         </span>
       )}
+      {hasMap && (
+        <button
+          type="button"
+          title="Pokaż spawny tego peta na mapie"
+          aria-label={`Mapa: ${pet.name}`}
+          onClick={() => onMap({ id: pet.id, name: pet.name })}
+          className="grid h-5 shrink-0 place-items-center rounded-[4px] px-1.5 text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
+        >
+          Mapa
+        </button>
+      )}
       <PinButton pet={pet} />
     </li>
   );
@@ -88,7 +101,15 @@ function emptyText(pets: PetsSnapshot, mode: 'recent' | 'nearby', hideMaxed: boo
   return 'Nagrody za dusze pojawią się tutaj.';
 }
 
-export function PetsPanel({ snap, onFinder }: { snap: OverlaySnapshot; onFinder: () => void }) {
+export function PetsPanel({ snap, onFinder, onMap }: { snap: OverlaySnapshot; onFinder: () => void; onMap: (pet: { id: number; name: string } | null) => void }) {
+  const [mapIds, setMapIds] = useState<Set<number> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void loadSpawns().then((d) => alive && setMapIds(petsWithMap(d)));
+    return () => {
+      alive = false;
+    };
+  }, []);
   const { pets, settings } = snap;
   const mode = settings.petsMode;
   const api = window.overlay;
@@ -111,6 +132,17 @@ export function PetsPanel({ snap, onFinder }: { snap: OverlaySnapshot; onFinder:
       title="Zwierzaki"
       layout={settings.panels.pets}
       editMode={snap.editMode || snap.altMode}
+      sub={
+        <button
+          type="button"
+          title="Mapa spawnów petów (wybierz peta na mapie)"
+          aria-label="Otwórz mapę petów"
+          onClick={() => onMap(null)}
+          className="grid h-5 place-items-center rounded-[4px] px-1.5 text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
+        >
+          Mapa
+        </button>
+      }
       aside={pets.summary.total > 0 && pets.synced ? <span className="num" title="Zebrane / wszystkie (bez petów tylko za prawdziwe pieniądze)">{pets.summary.collected}/{pets.summary.total}</span> : null}
     >
       <div className="flex items-center gap-1.5 px-2 pt-1.5">
@@ -136,7 +168,7 @@ export function PetsPanel({ snap, onFinder }: { snap: OverlaySnapshot; onFinder:
       ) : (
         <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
           {pets.rows.map((p) => (
-            <PetLine key={p.id} pet={p} mode={mode} />
+            <PetLine key={p.id} pet={p} mode={mode} hasMap={mapIds?.has(p.id) ?? false} onMap={onMap} />
           ))}
         </ol>
       )}

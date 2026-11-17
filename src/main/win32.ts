@@ -34,6 +34,7 @@ const GetForegroundWindow: () => bigint | null = user32.func('void * __stdcall G
 const GetWindowTextW: (hwnd: bigint, buf: Buffer, max: number) => number = user32.func(
   'int __stdcall GetWindowTextW(void *hWnd, _Out_ uint16_t *buf, int max)',
 );
+const SetForegroundWindow: (hwnd: bigint) => boolean = user32.func('bool __stdcall SetForegroundWindow(void *hWnd)');
 const GetWindowRect: (hwnd: bigint, rect: Partial<Rect>) => boolean = user32.func(
   'bool __stdcall GetWindowRect(void *hWnd, _Out_ RECT *rect)',
 );
@@ -53,6 +54,8 @@ export interface ForegroundWindow {
   rect: Rect | null;
   /** Id of the process that owns the window (a plain window query; no handle to the process is opened). */
   pid: number | null;
+  /** The window handle, kept only to give the focus back to the same window (see focusWindow). */
+  hwnd: bigint;
 }
 
 export function getForegroundWindow(): ForegroundWindow | null {
@@ -64,7 +67,15 @@ export function getForegroundWindow(): ForegroundWindow | null {
   const ok = GetWindowRect(hwnd, rect);
   const pidOut = [0];
   GetWindowThreadProcessId(hwnd, pidOut);
-  return { title, rect: ok ? (rect as Rect) : null, pid: (pidOut[0] ?? 0) > 0 ? (pidOut[0] ?? null) : null };
+  return { title, rect: ok ? (rect as Rect) : null, pid: (pidOut[0] ?? 0) > 0 ? (pidOut[0] ?? null) : null, hwnd };
+}
+
+/**
+ * Gives the keyboard focus back to a window (the game's, after the overlay's own windows closed). The same as clicking
+ * it in the taskbar: a plain window-management call that does not touch the window's process.
+ */
+export function focusWindow(hwnd: bigint): void {
+  SetForegroundWindow(hwnd);
 }
 
 /** System cursor state: shown (menus, map, inventory) or hidden (camera mode), plus position. */

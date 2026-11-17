@@ -12,10 +12,9 @@ const PANEL_META: Record<PanelId, { label: string; icon: string }> = {
   target: { label: 'Cel', icon: 'M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M8 4.5a3.5 3.5 0 1 0 0.01 0Z' },
   nearby: { label: 'W pobliżu', icon: 'M8 2a6 6 0 1 0 0.01 0ZM8 5.5a2.5 2.5 0 1 0 0.01 0ZM8 8l4-4' },
   daily: { label: 'Dzisiaj', icon: 'M2.5 4h11v9.5h-11ZM2.5 7h11M5.5 2.5v3M10.5 2.5v3' },
-  pets: { label: 'Zwierzaki', icon: 'M5 6.5a1.4 1.4 0 1 0 0.01 0ZM11 6.5a1.4 1.4 0 1 0 0.01 0ZM8 9.5c-2 0-3.2 1.2-3.2 2.4 0 .9.8 1.4 1.6 1.4.7 0 1-.4 1.6-.4s.9.4 1.6.4c.8 0 1.6-.5 1.6-1.4C11.2 10.7 10 9.5 8 9.5Z' },
+  pets: { label: 'Zwierzaki', icon: 'M4.500 4.500C4.500 3.300 6 2.500 8 2.500s3.500.8 3.500 2V9c0 2.500-1.500 4.500-3.500 4.500S4.500 11.500 4.500 9ZM4.500 4L2.500 6.500 3 10l1.500-1M11.500 4l2 2.500L13 10l-1.500-1M6.800 6.800h.01M9.200 6.800h.01M7 10l1 .800 1-.800' },
 };
 
-const ICON_LOBBY = 'M2 13v-1.5a3 3 0 0 1 3-3h1M10 8.5h1a3 3 0 0 1 3 3V13M5.5 6a2 2 0 1 0 0.01 0ZM10.5 6a2 2 0 1 0 0.01 0Z';
 const ICON_MOVE = 'M8 1.5v13M1.5 8h13M8 1.5L6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2';
 const ICON_RESET = 'M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3';
 const ICON_PIN = 'M6 2h4l-.8 4 2.8 2.8H4L6.8 6ZM8 8.8V14';
@@ -131,13 +130,6 @@ export function Toolbar({
           <Icon d={PANEL_META[id].icon} />
         </ToolButton>
       ))}
-      <ToolButton
-        label={settings.showLobby ? 'Ukryj lobby w oknie DPS' : 'Pokaż lobby w oknie DPS'}
-        active={settings.showLobby}
-        onClick={() => api.updateSettings({ showLobby: !settings.showLobby })}
-      >
-        <Icon d={ICON_LOBBY} />
-      </ToolButton>
       <ToolButton label={historyOpen ? 'Zamknij historię dungeonów' : 'Historia dungeonów i bossów'} active={historyOpen} onClick={onHistory}>
         <Icon d={ICON_HISTORY} />
       </ToolButton>

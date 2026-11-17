@@ -57,3 +57,16 @@ describe('global shortcuts', () => {
     expect(settingsPatchSchema.safeParse({ hotkeys: { pin: 'Control+Alt+P', edit: 'Control+Shift+L' } }).success).toBe(true);
   });
 });
+
+describe('colour settings', () => {
+  it('an older settings object without colours gets the defaults, and only #rrggbb values are accepted', async () => {
+    const { settingsSchema, settingsPatchSchema, DEFAULT_SETTINGS } = await import('../src/shared/types');
+    const { colors: _drop, ...old } = DEFAULT_SETTINGS;
+    void _drop;
+    const parsed = settingsSchema.parse(old);
+    expect(parsed.colors).toEqual({ classes: {}, self: null, tagBg: '#f269cb', tagText: '#2a0a1d' });
+    expect(settingsPatchSchema.safeParse({ colors: { classes: { gladiator: '#ff0000' }, self: '#00ff00', tagBg: '#112233', tagText: '#ffffff' } }).success).toBe(true);
+    expect(settingsPatchSchema.safeParse({ colors: { classes: { gladiator: 'red' }, self: null, tagBg: '#112233', tagText: '#ffffff' } }).success).toBe(false);
+    expect(settingsPatchSchema.safeParse({ colors: { classes: { dragon: '#ff0000' }, self: null, tagBg: '#112233', tagText: '#ffffff' } }).success).toBe(false);
+  });
+});
