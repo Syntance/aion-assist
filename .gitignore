@@ -10,3 +10,4 @@ __pycache__/
 src/renderer/src/assets/pets/
 src/renderer/src/assets/classes/
 .claude/
+graphify-out/
