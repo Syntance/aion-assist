@@ -4,64 +4,14 @@
   "graph": {},
   "nodes": [
     {
-      "label": "RELEASING.md",
-      "file_type": "document",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "docs_releasing",
-      "community": 29,
-      "norm_label": "releasing.md"
-    },
-    {
-      "label": "Wydawanie aktualizacji (GitHub Releases)",
-      "file_type": "document",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "docs_releasing_wydawanie_aktualizacji_github_releases",
-      "community": 29,
-      "norm_label": "wydawanie aktualizacji (github releases)"
-    },
-    {
-      "label": "Konfiguracja (zrobiona)",
-      "file_type": "document",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L5",
-      "_origin": "ast",
-      "id": "docs_releasing_konfiguracja_zrobiona",
-      "community": 29,
-      "norm_label": "konfiguracja (zrobiona)"
-    },
-    {
-      "label": "Ka\u017cda nowa wersja",
-      "file_type": "document",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L15",
-      "_origin": "ast",
-      "id": "docs_releasing_ka\u017cda_nowa_wersja",
-      "community": 29,
-      "norm_label": "kazda nowa wersja"
-    },
-    {
-      "label": "Co znajomy powinien wiedzie\u0107",
-      "file_type": "document",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L35",
-      "_origin": "ast",
-      "id": "docs_releasing_co_znajomy_powinien_wiedzie\u0107",
-      "community": 29,
-      "norm_label": "co znajomy powinien wiedziec"
-    },
-    {
       "label": "README.md",
       "file_type": "document",
       "source_file": "README.md",
       "source_location": "L1",
       "_origin": "ast",
+      "id": "readme",
       "community": 22,
-      "norm_label": "readme.md",
-      "id": "readme"
+      "norm_label": "readme.md"
     },
     {
       "label": "Aion Assist",
@@ -69,99 +19,149 @@
       "source_file": "README.md",
       "source_location": "L1",
       "_origin": "ast",
+      "id": "readme_aion_assist",
       "community": 22,
-      "norm_label": "aion assist",
-      "id": "readme_aion_assist"
+      "norm_label": "aion assist"
     },
     {
       "label": "Uruchomienie",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L7",
+      "source_location": "L18",
       "_origin": "ast",
+      "id": "readme_uruchomienie",
       "community": 22,
-      "norm_label": "uruchomienie",
-      "id": "readme_uruchomienie"
+      "norm_label": "uruchomienie"
     },
     {
       "label": "Sterowanie",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L31",
+      "source_location": "L42",
       "_origin": "ast",
+      "id": "readme_sterowanie",
       "community": 22,
-      "norm_label": "sterowanie",
-      "id": "readme_sterowanie"
+      "norm_label": "sterowanie"
     },
     {
       "label": "Bezpiecze\u0144stwo konta \u2014 stan faktyczny",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L52",
+      "source_location": "L63",
       "_origin": "ast",
+      "id": "readme_bezpiecze\u0144stwo_konta_stan_faktyczny",
       "community": 22,
-      "norm_label": "bezpieczenstwo konta \u2014 stan faktyczny",
-      "id": "readme_bezpiecze\u0144stwo_konta_stan_faktyczny"
+      "norm_label": "bezpieczenstwo konta \u2014 stan faktyczny"
     },
     {
       "label": "Sk\u0105d pochodz\u0105 dane i czego nie ma",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L72",
+      "source_location": "L83",
       "_origin": "ast",
+      "id": "readme_sk\u0105d_pochodz\u0105_dane_i_czego_nie_ma",
       "community": 22,
-      "norm_label": "skad pochodza dane i czego nie ma",
-      "id": "readme_sk\u0105d_pochodz\u0105_dane_i_czego_nie_ma"
+      "norm_label": "skad pochodza dane i czego nie ma"
     },
     {
       "label": "Tryb odkrywania (karta celu po zaznaczeniu)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L92",
+      "source_location": "L103",
       "_origin": "ast",
+      "id": "readme_tryb_odkrywania_karta_celu_po_zaznaczeniu",
       "community": 22,
-      "norm_label": "tryb odkrywania (karta celu po zaznaczeniu)",
-      "id": "readme_tryb_odkrywania_karta_celu_po_zaznaczeniu"
+      "norm_label": "tryb odkrywania (karta celu po zaznaczeniu)"
     },
     {
       "label": "Zwierzaki (Pet Tracker)",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L102",
+      "source_location": "L113",
       "_origin": "ast",
+      "id": "readme_zwierzaki_pet_tracker",
       "community": 22,
-      "norm_label": "zwierzaki (pet tracker)",
-      "id": "readme_zwierzaki_pet_tracker"
+      "norm_label": "zwierzaki (pet tracker)"
     },
     {
       "label": "Aktualizacje",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L112",
+      "source_location": "L123",
       "_origin": "ast",
+      "id": "readme_aktualizacje",
       "community": 22,
-      "norm_label": "aktualizacje",
-      "id": "readme_aktualizacje"
+      "norm_label": "aktualizacje"
     },
     {
       "label": "Architektura",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L116",
+      "source_location": "L127",
       "_origin": "ast",
+      "id": "readme_architektura",
       "community": 22,
-      "norm_label": "architektura",
-      "id": "readme_architektura"
+      "norm_label": "architektura"
     },
     {
       "label": "\u0179r\u00f3d\u0142a protoko\u0142u i licencja",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L127",
+      "source_location": "L138",
       "_origin": "ast",
+      "id": "readme_\u017ar\u00f3d\u0142a_protoko\u0142u_i_licencja",
       "community": 22,
-      "norm_label": "zrod\u0142a protoko\u0142u i licencja",
-      "id": "readme_\u017ar\u00f3d\u0142a_protoko\u0142u_i_licencja"
+      "norm_label": "zrod\u0142a protoko\u0142u i licencja"
+    },
+    {
+      "label": "RELEASING.md",
+      "file_type": "document",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 29,
+      "norm_label": "releasing.md",
+      "id": "docs_releasing"
+    },
+    {
+      "label": "Wydawanie aktualizacji (GitHub Releases)",
+      "file_type": "document",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 29,
+      "norm_label": "wydawanie aktualizacji (github releases)",
+      "id": "docs_releasing_wydawanie_aktualizacji_github_releases"
+    },
+    {
+      "label": "Konfiguracja (zrobiona)",
+      "file_type": "document",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L5",
+      "_origin": "ast",
+      "community": 29,
+      "norm_label": "konfiguracja (zrobiona)",
+      "id": "docs_releasing_konfiguracja_zrobiona"
+    },
+    {
+      "label": "Ka\u017cda nowa wersja",
+      "file_type": "document",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L15",
+      "_origin": "ast",
+      "community": 29,
+      "norm_label": "kazda nowa wersja",
+      "id": "docs_releasing_ka\u017cda_nowa_wersja"
+    },
+    {
+      "label": "Co znajomy powinien wiedzie\u0107",
+      "file_type": "document",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L35",
+      "_origin": "ast",
+      "community": 29,
+      "norm_label": "co znajomy powinien wiedziec",
+      "id": "docs_releasing_co_znajomy_powinien_wiedzie\u0107"
     },
     {
       "label": "eslint.config.mjs",
@@ -8358,122 +8358,22 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "source": "docs_releasing",
-      "target": "docs_releasing_wydawanie_aktualizacji_github_releases",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L35",
-      "weight": 1.0,
-      "source": "docs_releasing_wydawanie_aktualizacji_github_releases",
-      "target": "docs_releasing_co_znajomy_powinien_wiedzie\u0107",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L15",
-      "weight": 1.0,
-      "source": "docs_releasing_wydawanie_aktualizacji_github_releases",
-      "target": "docs_releasing_ka\u017cda_nowa_wersja",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "docs/RELEASING.md",
-      "source_location": "L5",
-      "weight": 1.0,
-      "source": "docs_releasing_wydawanie_aktualizacji_github_releases",
-      "target": "docs_releasing_konfiguracja_zrobiona",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "README.md",
       "source_location": "L1",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "readme",
-      "target": "readme_aion_assist"
+      "target": "readme_aion_assist",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L112",
+      "source_location": "L123",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "readme_aion_assist",
-      "target": "readme_aktualizacje"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L116",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_aion_assist",
-      "target": "readme_architektura"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L52",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_aion_assist",
-      "target": "readme_bezpiecze\u0144stwo_konta_stan_faktyczny"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L72",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_aion_assist",
-      "target": "readme_sk\u0105d_pochodz\u0105_dane_i_czego_nie_ma"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L31",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_aion_assist",
-      "target": "readme_sterowanie"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L7",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_aion_assist",
-      "target": "readme_uruchomienie"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L102",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_aion_assist",
-      "target": "readme_zwierzaki_pet_tracker"
+      "target": "readme_aktualizacje",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -8481,19 +8381,119 @@
       "source_file": "README.md",
       "source_location": "L127",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "readme_aion_assist",
-      "target": "readme_\u017ar\u00f3d\u0142a_protoko\u0142u_i_licencja"
+      "target": "readme_architektura",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L92",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "readme_aion_assist",
+      "target": "readme_bezpiecze\u0144stwo_konta_stan_faktyczny",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "readme_aion_assist",
+      "target": "readme_sk\u0105d_pochodz\u0105_dane_i_czego_nie_ma",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "readme_aion_assist",
+      "target": "readme_sterowanie",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "readme_aion_assist",
+      "target": "readme_uruchomienie",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L113",
+      "weight": 1.0,
+      "source": "readme_aion_assist",
+      "target": "readme_zwierzaki_pet_tracker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L138",
+      "weight": 1.0,
+      "source": "readme_aion_assist",
+      "target": "readme_\u017ar\u00f3d\u0142a_protoko\u0142u_i_licencja",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "readme_sk\u0105d_pochodz\u0105_dane_i_czego_nie_ma",
+      "target": "readme_tryb_odkrywania_karta_celu_po_zaznaczeniu",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L1",
       "weight": 1.0,
       "confidence_score": 1.0,
-      "source": "readme_sk\u0105d_pochodz\u0105_dane_i_czego_nie_ma",
-      "target": "readme_tryb_odkrywania_karta_celu_po_zaznaczeniu"
+      "source": "docs_releasing",
+      "target": "docs_releasing_wydawanie_aktualizacji_github_releases"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L35",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "docs_releasing_wydawanie_aktualizacji_github_releases",
+      "target": "docs_releasing_co_znajomy_powinien_wiedzie\u0107"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "docs_releasing_wydawanie_aktualizacji_github_releases",
+      "target": "docs_releasing_ka\u017cda_nowa_wersja"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/RELEASING.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "docs_releasing_wydawanie_aktualizacji_github_releases",
+      "target": "docs_releasing_konfiguracja_zrobiona"
     },
     {
       "relation": "contains",
@@ -26572,5 +26572,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "ab0ccc563a0fa107f29392ec1385d74680bd68e4"
+  "built_at_commit": "c6b31d9fdc2177d5ff95a96d9ede0e0a39dd9d5a"
 }

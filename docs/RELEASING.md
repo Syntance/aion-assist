@@ -23,14 +23,23 @@ git add -A; git commit -m "Wersja 0.1.1"; git push
 git tag v0.1.1; git push origin v0.1.1
 ```
 
-3. Opublikuj:
+3. Utwórz wydanie na GitHubie **przed** publikacją (bez tego electron-builder próbuje utworzyć je dwa razy naraz i kończy się błędem „already_exists”), a potem opublikuj:
 
 ```powershell
 $env:GH_TOKEN = (gh auth token)
+gh release create v0.1.1 --repo Syntance/aion-assist --title "Aion Assist 0.1.1" --notes "Opis zmian"
 pnpm release
 ```
 
-`pnpm release` buduje instalator, tworzy wydanie na GitHubie i wgrywa instalator, `latest.yml` (z sumą kontrolną, którą aplikacja sprawdza przed instalacją) i blockmap. Po wydaniu sprawdź, że `latest.yml` w wydaniu zgadza się z instalatorem (suma `sha512` i `size`); gdyby publikacja przerwała się w połowie, `pnpm release` zbuduje instalator od nowa, więc przed ponowną próbą uruchom go jeszcze raz w całości.
+`pnpm release` buduje instalator `Aion-Assist-Setup.exe` (stała nazwa, więc link w README zawsze działa) i wgrywa go do wydania razem z `latest.yml` (suma kontrolna, którą aplikacja sprawdza przed instalacją) i blockmapem.
+
+4. Sprawdź, że wydanie ma wszystkie trzy pliki, a `sha512` i `size` w `latest.yml` zgadzają się z instalatorem:
+
+```powershell
+gh release view v0.1.1 --repo Syntance/aion-assist --json assets --jq '.assets[].name'
+```
+
+Gdyby publikacja przerwała się w połowie, brakujące pliki dosyłasz poleceniem `gh release upload v0.1.1 <plik> --repo Syntance/aion-assist --clobber`. Plik `latest.yml` musi pasować do dosłanego instalatora, więc przy ponownym buildzie wygeneruj go od nowa.
 
 ## Co znajomy powinien wiedzieć
 
