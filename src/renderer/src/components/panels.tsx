@@ -112,27 +112,51 @@ function FocusStrip({ focus, total, deaths }: { focus: NonNullable<OverlaySnapsh
   );
 }
 
-/** Expedition lobby / party list inside the DPS window: leader, ready state, GS and CP. */
+/** Slots of the roster packet are counted over the whole expedition: 1-5 is party 1, 6-10 is party 2, and so on. */
+const PARTY_SIZE = 5;
+
+/** Expedition lobby / party list inside the DPS window: leader, ready state, GS and CP; split by party when there are two or more. */
 function LobbySection({ lobby }: { lobby: NonNullable<OverlaySnapshot['lobby']> }) {
+  const groups = new Map<number, typeof lobby.members>();
+  for (const m of lobby.members) {
+    const n = Math.floor((Math.max(1, m.slot) - 1) / PARTY_SIZE) + 1;
+    groups.set(n, [...(groups.get(n) ?? []), m]);
+  }
+  const parties = [...groups.entries()].sort((x, y) => x[0] - y[0]);
+  const split = parties.length > 1;
+  const row = (m: (typeof lobby.members)[number]) => (
+    <PlayerRow
+      key={m.card.name}
+      card={m.card}
+      isSelf={m.isSelf}
+      fill={1}
+      primary={m.leader ? 'Lider' : m.ready ? 'Gotowy' : 'Niegotowy'}
+      secondary={m.card.level ? `poz. ${m.card.level}` : ''}
+      tone={m.leader ? 'leader' : m.ready ? 'ready' : 'waiting'}
+    />
+  );
   return (
     <section className="mx-[5px] mt-[5px]" aria-label="Lobby">
       <h3 className="m-0 flex items-baseline gap-2 px-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-ink-mute">
         <span className="truncate">Lobby{lobby.title ? ` · ${lobby.title}` : ''}</span>
         <span className="num ml-auto shrink-0 normal-case tracking-normal">{lobby.readyCount}/{lobby.members.length} gotowych</span>
       </h3>
-      <ol className="m-0 flex list-none flex-col gap-[3px] p-0">
-        {lobby.members.map((m) => (
-          <PlayerRow
-            key={m.card.name}
-            card={m.card}
-            isSelf={m.isSelf}
-            fill={1}
-            primary={m.leader ? 'Lider' : m.ready ? 'Gotowy' : 'Niegotowy'}
-            secondary={m.card.level ? `poz. ${m.card.level}` : ''}
-            tone={m.leader ? 'leader' : m.ready ? 'ready' : 'waiting'}
-          />
-        ))}
-      </ol>
+      {split ? (
+        <div className="flex flex-col gap-1.5">
+          {parties.map(([n, members]) => (
+            <div key={n}>
+              <h4 className="m-0 flex items-center gap-2 px-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-accent">
+                <span>Drużyna {n}</span>
+                <span className="h-px flex-1 bg-line" aria-hidden="true" />
+                <span className="num normal-case tracking-normal text-ink-dim">{members.filter((m) => m.ready || m.leader).length}/{members.length} gotowych</span>
+              </h4>
+              <ol className="m-0 flex list-none flex-col gap-[3px] p-0">{members.map(row)}</ol>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ol className="m-0 flex list-none flex-col gap-[3px] p-0">{lobby.members.map(row)}</ol>
+      )}
     </section>
   );
 }
