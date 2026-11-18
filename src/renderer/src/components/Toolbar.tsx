@@ -10,7 +10,6 @@ const PANEL_META: Record<PanelId, { label: string; icon: string }> = {
   meter: { label: 'DPS', icon: 'M3 13V8M8 13V3M13 13V6' },
   pvp: { label: 'PvP', icon: 'M3 3l8 8M13 3L5 11M3.5 12.5l1.5-1.5M12.5 12.5L11 11M2.5 9.5l4 4M13.5 9.5l-4 4' },
   target: { label: 'Cel', icon: 'M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M8 4.5a3.5 3.5 0 1 0 0.01 0Z' },
-  nearby: { label: 'W pobliżu', icon: 'M8 2a6 6 0 1 0 0.01 0ZM8 5.5a2.5 2.5 0 1 0 0.01 0ZM8 8l4-4' },
   daily: { label: 'Dzisiaj', icon: 'M2.5 4h11v9.5h-11ZM2.5 7h11M5.5 2.5v3M10.5 2.5v3' },
   pets: { label: 'Zwierzaki', icon: 'M4.500 4.500C4.500 3.300 6 2.500 8 2.500s3.500.8 3.500 2V9c0 2.500-1.500 4.500-3.500 4.500S4.500 11.500 4.500 9ZM4.500 4L2.500 6.500 3 10l1.500-1M11.500 4l2 2.500L13 10l-1.500-1M6.800 6.800h.01M9.200 6.800h.01M7 10l1 .800 1-.800' },
 };
@@ -120,7 +119,7 @@ export function Toolbar({
         Aion Assist
       </span>
       <Sep />
-      {PANEL_IDS.filter((id) => id !== 'pvp' && (id !== 'nearby' || settings.scanNearby)).map((id) => (
+      {PANEL_IDS.filter((id) => id !== 'pvp').map((id) => (
         <ToolButton
           key={id}
           label={`${settings.panels[id].visible ? 'Ukryj' : 'Pokaż'} panel ${PANEL_META[id].label}`}

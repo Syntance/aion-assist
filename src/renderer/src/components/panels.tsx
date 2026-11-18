@@ -560,47 +560,6 @@ export function TargetPanel({ snap }: { snap: OverlaySnapshot }) {
   );
 }
 
-// --- nearby (optional scan, off by default) ------------------------------------------
-
-export function NearbyPanel({ snap }: { snap: OverlaySnapshot }) {
-  const rows = snap.nearby;
-  const enemies = rows.filter((r) => r.enemy === true).length;
-  return (
-    <Panel id="nearby" title="W pobliżu" layout={snap.settings.panels.nearby} editMode={snap.editMode || snap.altMode} aside={<span className="num">{enemies} wrog.</span>}>
-      {rows.length === 0 ? (
-        <Empty>
-          {snap.settings.showAllies
-            ? 'Gracze pojawią się, gdy wejdą w zasięg wzroku.'
-            : 'Brak wrogów w zasięgu. Sojusznicy są ukryci (opcja w ustawieniach).'}
-        </Empty>
-      ) : (
-        <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
-          {rows.map((row) => (
-            <li
-              key={row.card.name}
-              className={`flex h-[40px] items-center gap-2 rounded-[6px] px-2 ${row.attacking ? 'bg-accent/25 ring-1 ring-accent' : 'bg-row'}`}
-            >
-              <span className={`h-6 w-[3px] rounded-full ${row.enemy === true ? 'bg-bad' : row.enemy === false ? 'bg-good' : 'bg-ink-mute'}`} aria-hidden="true" />
-              <ClassIcon className={row.card.className} />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate text-[13px] font-semibold">{row.card.name}</span>
-                  {row.attacking && <span className="rounded-[3px] bg-accent px-1 text-[9px] font-bold text-panel-head">ATAKUJESZ</span>}
-                  <RecordBadge record={row.record} />
-                </span>
-                <GearLine card={row.card} />
-              </span>
-              <span className="num text-right text-[11px] text-ink-dim">
-                {row.card.abyssRank !== null ? `#${grouped(row.card.abyssRank)}` : row.card.lookup === 'loading' ? '…' : '—'}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </Panel>
-  );
-}
-
 // --- daily --------------------------------------------------------------------------
 
 export function DailyPanel({ snap }: { snap: OverlaySnapshot }) {

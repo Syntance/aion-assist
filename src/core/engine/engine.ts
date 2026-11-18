@@ -13,7 +13,6 @@ import {
   type FocusSnapshot,
   type LobbySnapshot,
   type MeterSnapshot,
-  type NearbyRow,
   type PlayerCard,
   type PvpRow,
   type DeathSnapshot,
@@ -39,11 +38,9 @@ const ENCOUNTER_GAP_MS = 5 * 60_000;
 const TARGET_HOLD_MS = 10_000;
 const DAILY_KEEP_DAYS = 120;
 const SELF_FALLBACK_NAME = 'Ty';
-const ATTACKING_MS = 15_000;
 const FOE_ACTIVE_MS = 60_000;
 const FOCUS_MS = 12_000;
 const HP_KEEP = 400;
-const NEARBY_SHOWN = 12;
 
 export interface DailyRecord {
   apStart: number | null;
@@ -106,8 +103,6 @@ export interface EngineOptions {
   npcBoss?: (code: number) => boolean | null;
   /** Called once for every finished fight (saved to the history). */
   onEncounter?: (record: EncounterRecord) => void;
-  /** Whether same-faction players are listed as nearby. Absent: they are. */
-  showAllies?: () => boolean;
   /** Starts a character lookup; returns false when lookups are switched off. */
   requestLookup?: (name: string, server: number | null) => boolean;
 }
@@ -313,7 +308,6 @@ export class Engine {
     dismissed: boolean;
   } | null = null;
   /** Players currently in view (entity id -> name), minus self. */
-  private readonly nearby = new Map<number, string>();
   /** Players who exchanged damage with my side this session: certainly enemies. */
   private readonly foes = new Set<string>();
   /** NPC code by entity id (from the spawn record), for naming bosses in the history. */
@@ -336,7 +330,7 @@ export class Engine {
   private readonly stagger = new Map<number, { max: number; rest: number; broken: boolean; at: number }>();
   /** The NPC I hit last: the closest observable thing to "my target". */
   private focus: { id: number; at: number } | null = null;
-  /** Foe name -> last time they traded damage with my side; keeps them listed as nearby. */
+  /** Foe name -> last time they traded damage with my side (the death pop-up offers the latest ones). */
   private readonly foeActive = new Map<string, number>();
   /** target entity id -> attacker entity id -> last hit time */
   private readonly lastHits = new Map<number, Map<number, number>>();
@@ -543,7 +537,6 @@ export class Engine {
         profile.legion = ev.legion ?? profile.legion;
         // ev.gearScore is NOT used: compared with the game it is another stat (Aeryn: 3783 in
         // the record vs 2873 in game). Other players' GS comes from their official profile.
-        if (ev.id !== this.selfId && ev.name !== this.selfName) this.nearby.set(ev.id, ev.name);
         break;
       }
       case 'party':
@@ -593,7 +586,6 @@ export class Engine {
         this.playerRecords.clear();
         this.contextDirty = true;
         this.lastHits.clear();
-        this.nearby.clear();
         this.hp.clear();
         this.hpPeak.clear();
         this.stagger.clear();
@@ -656,7 +648,6 @@ export class Engine {
           this.hp.delete(ev.id);
           this.stagger.delete(ev.id);
         }
-        else if (ev.flag === 7) this.nearby.delete(ev.id); // left view / the world
         break;
       case 'kill':
         this.onKill(ev, now);
@@ -787,7 +778,6 @@ export class Engine {
       `party=${this.party.size}`,
       `meterRows=${meter.rows.length}`,
       `meterTotal=${meter.total}`,
-      `nearby=${this.nearby.size}`,
     ].join(' ');
   }
 
@@ -1337,44 +1327,6 @@ export class Engine {
       record: this.opts.store.rivals[this.target.name] ?? null,
       source: this.target.source,
     };
-  }
-
-  nearbySnapshot(now: number): NearbyRow[] {
-    const selfServer = this.selfName ? this.profile(this.selfName).server : null;
-    const attackingName =
-      this.target && this.target.source === 'attacked' && now - this.target.at <= ATTACKING_MS ? this.target.name : null;
-    const showAllies = this.opts.showAllies?.() ?? true;
-    const rows: NearbyRow[] = [];
-    // In view (spawn records) plus foes active in the last minute: a player who left view and
-    // came back is not always re-announced, but they are clearly still around if fighting us.
-    const names = new Set(this.nearby.values());
-    for (const [name, at] of this.foeActive) {
-      if (now - at <= FOE_ACTIVE_MS) names.add(name);
-      else this.foeActive.delete(name);
-    }
-    for (const name of names) {
-      if (this.party.has(name)) continue;
-      const card = this.card(name);
-      const fought = this.foes.has(name) || this.opts.store.rivals[name] !== undefined;
-      // Servers are mixed (Elyos fight Elyos), so the home server decides, not the faction:
-      // another server = enemy. Faction is only the fallback when a server is unknown.
-      const enemy = fought
-        ? true
-        : card.server !== null && selfServer !== null
-          ? card.server !== selfServer
-          : null;
-      // unknown server: the profile lookup returns it, which settles it
-      if (enemy === null) this.lookup(this.profile(name));
-      // only confirmed enemies, unless allies are switched on (the attacked player always shows)
-      if (enemy !== true && !showAllies && name !== attackingName) continue;
-      rows.push({ card, enemy, attacking: name === attackingName, record: this.opts.store.rivals[name] ?? null });
-    }
-    const rank = (r: NearbyRow): number => (r.attacking ? 0 : r.enemy === true ? 1 : r.enemy === null ? 2 : 3);
-    rows.sort((a, b) => rank(a) - rank(b) || (b.card.combatPower ?? 0) - (a.card.combatPower ?? 0));
-    const shown = rows.slice(0, NEARBY_SHOWN);
-    // only players worth knowing about are looked up (friendly ones are skipped)
-    for (const row of shown) if (row.enemy !== false) this.lookup(this.profile(row.card.name));
-    return shown.map((row) => ({ ...row, card: this.card(row.card.name) }));
   }
 
   lobbySnapshot(): LobbySnapshot | null {

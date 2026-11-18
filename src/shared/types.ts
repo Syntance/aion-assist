@@ -59,7 +59,7 @@ const colorsSchema = z.object({
 export type ColorSettings = z.infer<typeof colorsSchema>;
 export const DEFAULT_COLORS: ColorSettings = { classes: {}, self: null, tagBg: DEFAULT_TAG_BG, tagText: DEFAULT_TAG_TEXT };
 
-export const PANEL_IDS = ['meter', 'pvp', 'target', 'daily', 'nearby', 'pets'] as const;
+export const PANEL_IDS = ['meter', 'pvp', 'target', 'daily', 'pets'] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 const panelBase = z.object({
@@ -90,7 +90,6 @@ export const settingsSchema = z.object({
     target: panelSchema,
     daily: panelSchema,
     // added later: older settings files lack it
-    nearby: panelSchema.default({ x: 740, y: 24, w: 320, scale: 1, h: null, visible: true, pinned: false }),
     pets: panelSchema.default({ x: 1100, y: 220, w: 300, scale: 1, h: null, visible: true, pinned: false }),
   }),
   opacity: z.number().min(0.05).max(1),
@@ -105,8 +104,6 @@ export const settingsSchema = z.object({
   fightIdleSec: z.number().min(3).max(120),
   /** Seconds without damage after which the PvP window starts a new fight. */
   pvpIdleSec: z.number().min(5).max(120).default(20),
-  /** List same-faction players in the "nearby" panel (off: enemies and unknowns only). */
-  showAllies: z.boolean().default(false),
   /** Show the expedition lobby / party list inside the DPS window (between fights). */
   showLobby: z.boolean().default(true),
   historyBossOnly: z.boolean().default(true),
@@ -129,8 +126,6 @@ export const settingsSchema = z.object({
   deathPopupClose: z.enum(['respawn', 'manual']).default('respawn'),
   /** Record raw game packets to raw_tcp_ours.log (needs a restart; large file, advanced). */
   rawCapture: z.boolean().default(false),
-  /** Scan of nearby players (the "W pobliżu" panel and its profile lookups). Off = nothing runs. */
-  scanNearby: z.boolean().default(false),
   /** Show the ping (round trip to the game server, from captured TCP acknowledgements) in the DPS window footer. */
   showPing: z.boolean().default(false),
   /** Show the game's FPS beside the ping (Windows event tracing of the game's frames; passive). */
@@ -166,7 +161,6 @@ export const DEFAULT_SETTINGS: Settings = {
     pvp: { x: 24, y: 540, w: 380, scale: 1, h: null, visible: true, pinned: false },
     target: { x: 420, y: 24, w: 300, scale: 1, h: null, visible: true, pinned: false },
     daily: { x: 24, y: 24, w: 260, scale: 1, h: null, visible: true, pinned: false },
-    nearby: { x: 740, y: 24, w: 320, scale: 1, h: null, visible: true, pinned: false },
     pets: { x: 1100, y: 220, w: 300, scale: 1, h: null, visible: true, pinned: false },
   },
   opacity: 0.94,
@@ -176,7 +170,6 @@ export const DEFAULT_SETTINGS: Settings = {
   region: 'eu',
   fightIdleSec: 8,
   pvpIdleSec: 20,
-  showAllies: false,
   showLobby: true,
   historyBossOnly: true,
   petsMode: 'recent',
@@ -190,7 +183,6 @@ export const DEFAULT_SETTINGS: Settings = {
   deathPopup: true,
   deathPopupClose: 'respawn',
   rawCapture: false,
-  scanNearby: false,
   showPing: false,
   showFps: true,
   hotkeys: DEFAULT_HOTKEYS,
@@ -500,15 +492,6 @@ export interface TargetSnapshot {
   source: 'attacked' | 'attackedBy';
 }
 
-export interface NearbyRow {
-  card: PlayerCard;
-  /** null when either faction is unknown (server id not seen yet). */
-  enemy: boolean | null;
-  /** You hit this player in the last few seconds — the closest safe stand-in for "your target". */
-  attacking: boolean;
-  record: RivalRecord | null;
-}
-
 export interface LobbyMember {
   card: PlayerCard;
   isSelf: boolean;
@@ -579,7 +562,6 @@ export interface OverlaySnapshot {
   meter: MeterSnapshot;
   pvp: PvpSnapshot;
   target: TargetSnapshot | null;
-  nearby: NearbyRow[];
   lobby: LobbySnapshot | null;
   daily: DailySnapshot;
   settings: Settings;

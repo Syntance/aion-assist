@@ -10,7 +10,7 @@ import { PetsPanel } from './components/PetsPanel';
 import { HistoryWindow, PlayersWindow } from './components/History';
 import { ViewContext } from './components/Panel';
 import { SettingsWindow } from './components/Settings';
-import { DailyPanel, MeterPanel, NearbyPanel, TargetPanel } from './components/panels';
+import { DailyPanel, MeterPanel, TargetPanel } from './components/panels';
 import { Toolbar } from './components/Toolbar';
 
 /** The toolbar (and the windows that hang off it) shows while the game is in front, in edit mode, pinned, or forced on; a forced "hide" wins. */
@@ -111,7 +111,6 @@ export function App() {
         <DailyPanel snap={snap} />
         <MeterPanel snap={snap} onDetail={(name, source) => setDetail({ name, source })} onHistory={openHistory} historyOpen={historyOpen} />
         <TargetPanel snap={snap} />
-        {snap.settings.scanNearby && <NearbyPanel snap={snap} />}
         <PetsPanel
           snap={snap}
           onFinder={() => setPetsOpen(true)}

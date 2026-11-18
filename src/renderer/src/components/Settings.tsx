@@ -4,7 +4,7 @@ import { FpsAccess } from './FpsAccess';
 import { acceleratorLabel, buildAccelerator, DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator, MODIFIERS, splitAccelerator } from '@shared/keys';
 import { DEFAULT_CLASS_COLORS, DEFAULT_COLORS, DEFAULT_TAG_BG, DEFAULT_TAG_TEXT, PANEL_IDS, type ColorSettings, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
 
-export const PANEL_LABEL: Record<PanelId, string> = { meter: 'DPS i PvP', pvp: 'PvP', target: 'Cel', daily: 'Dzisiaj', nearby: 'W pobliżu', pets: 'Zwierzaki' };
+export const PANEL_LABEL: Record<PanelId, string> = { meter: 'DPS i PvP', pvp: 'PvP', target: 'Cel', daily: 'Dzisiaj', pets: 'Zwierzaki' };
 const REGIONS: Settings['region'][] = ['eu', 'nae', 'naw', 'sa', 'asia'];
 
 type TabId = 'look' | 'behavior' | 'hotkeys' | 'privacy' | 'about';
@@ -161,7 +161,7 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
   return (
     <>
       <Section title="Okna na ekranie">
-        {PANEL_IDS.filter((id) => id !== 'pvp' && (id !== 'nearby' || settings.scanNearby)).map((id) => (
+        {PANEL_IDS.filter((id) => id !== 'pvp').map((id) => (
           <Row key={id} title={PANEL_LABEL[id]}>
             <Switch label={`Pokaż okno ${PANEL_LABEL[id]}`} checked={settings.panels[id].visible} onChange={(v) => api.updatePanel({ id, layout: { visible: v } })} />
           </Row>
@@ -277,7 +277,6 @@ const PANEL_KEY_SUGGESTION: Record<PanelId, string> = {
   pvp: 'Control+Alt+2',
   target: 'Control+Alt+3',
   daily: 'Control+Alt+4',
-  nearby: 'Control+Alt+5',
   pets: 'Control+Alt+6',
 };
 
@@ -352,7 +351,7 @@ function Hotkeys({ snap }: { snap: OverlaySnapshot }) {
         <HotkeyRow id="edit" title="Przesuwanie okien" hint="Włącza i wyłącza tryb przesuwania okien (to samo robi przycisk ze strzałkami na pasku)." snap={snap} />
       </Section>
       <Section title="Przypięcie pojedynczych okien">
-        {PANEL_IDS.filter((id) => id !== 'pvp' && (id !== 'nearby' || snap.settings.scanNearby)).map((id) => (
+        {PANEL_IDS.filter((id) => id !== 'pvp').map((id) => (
           <PanelHotkeyRow key={id} id={id} snap={snap} />
         ))}
       </Section>
@@ -544,16 +543,6 @@ function Privacy({ snap }: { snap: OverlaySnapshot }) {
       </Section>
       <Section title="Nazwy bossów i instancji">
         <CatalogRow />
-      </Section>
-      <Section title="Skanowanie otoczenia">
-        <Row title="Gracze w pobliżu" hint="Okno „W pobliżu” z wrogami w zasięgu wzroku. Wyłączone: funkcja w ogóle nie działa, także pobieranie profili obcych graczy.">
-          <Switch label="Skanowanie otoczenia" checked={settings.scanNearby} onChange={(v) => api.updateSettings({ scanNearby: v })} />
-        </Row>
-        {settings.scanNearby && (
-          <Row title="Pokazuj też sojuszników" hint="Domyślnie lista pokazuje tylko wrogów i graczy o nieznanej frakcji.">
-            <Switch label="Sojusznicy w W pobliżu" checked={settings.showAllies} onChange={(v) => api.updateSettings({ showAllies: v })} />
-          </Row>
-        )}
       </Section>
     </>
   );

@@ -142,7 +142,6 @@ function main(): void {
     npcName,
     npcBoss: (code) => catalog.npc(code)?.boss ?? null,
     onEncounter: (record) => history.add(record),
-    showAllies: () => settings().showAllies,
     requestLookup: (name, server) => {
       if (demoMode) {
         setTimeout(() => engine.applyLookup(name, demoLookup(name), Date.now()), 600);
@@ -258,8 +257,6 @@ function main(): void {
       meter: engine.meterSnapshot(now),
       pvp: engine.pvpSnapshot(now),
       target: engine.targetSnapshot(),
-      // Off (default): the scan does not run at all, including the profile lookups it triggers for strangers.
-      nearby: settings().scanNearby ? engine.nearbySnapshot(now) : [],
       lobby: engine.lobbySnapshot(),
       daily: engine.dailySnapshot(now),
       settings: settings(),
