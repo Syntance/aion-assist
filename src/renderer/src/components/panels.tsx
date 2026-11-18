@@ -34,7 +34,21 @@ function ttkText(sec: number | null): string {
 }
 
 /** The boss bar: name, HP (current / max, %), party DPS and predicted time to kill, plus the stagger gauge. */
-function FocusStrip({ focus }: { focus: NonNullable<OverlaySnapshot['meter']['focus']> }) {
+/** Party damage and party deaths (shown next to the party DPS). */
+function PartyStats({ total, deaths }: { total: number; deaths: number }) {
+  return (
+    <>
+      <span>
+        Party DMG <b className="num font-semibold text-ink-dim">{compact(total)}</b>
+      </span>
+      <span title="Śmierci drużyny w tym dungeonie (liczone od wejścia, przez wszystkich bossów)" aria-label={`Party Deaths: ${deaths}`}>
+        Party Deaths <b className={`num font-semibold ${deaths > 0 ? 'text-bad' : 'text-ink-dim'}`}>{deaths}</b>
+      </span>
+    </>
+  );
+}
+
+function FocusStrip({ focus, total, deaths }: { focus: NonNullable<OverlaySnapshot['meter']['focus']>; total: number; deaths: number }) {
   const pct = focus.hpPct;
   const label = focus.name ?? (focus.code !== null ? `NPC #${focus.code}` : 'Cel');
   return (
@@ -72,12 +86,13 @@ function FocusStrip({ focus }: { focus: NonNullable<OverlaySnapshot['meter']['fo
           style={{ transform: `scaleX(${pct ?? 0})`, transformOrigin: 'left', background: 'linear-gradient(90deg, oklch(0.62 0.2 18), oklch(0.74 0.17 12))' }}
         />
       </div>
-      <div className="mt-1 flex items-baseline gap-2 text-[11px] text-ink-mute">
+      <div className="mt-1 flex items-center gap-2 text-[11px] leading-none text-ink-mute">
         <span>
           Party DPS <b className="num font-semibold text-ink-dim">{compact(focus.partyDps)}</b>
         </span>
-        <span className="num ml-auto" title="Przewidywany czas do zabicia przy obecnym DPS drużyny">
-          TTK <b className="font-semibold text-ink-dim">{ttkText(focus.ttkSec)}</b>
+        <PartyStats total={total} deaths={deaths} />
+        <span className="num ml-auto text-good" title="Przewidywany czas do zabicia przy obecnym DPS drużyny">
+          TTK <b className="font-semibold">{ttkText(focus.ttkSec)}</b>
         </span>
       </div>
       {focus.stagger && (
@@ -121,12 +136,15 @@ function LobbySection({ lobby }: { lobby: NonNullable<OverlaySnapshot['lobby']> 
   );
 }
 
+/** A filled skull in the colour of the text around it (red where it is used for deaths), with a soft highlight and shade. */
 const SkullIcon = () => (
-  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M8 1.8c-3 0-5 2-5 4.7 0 1.6.8 2.7 1.8 3.4V12h6.4V9.9c1-.7 1.8-1.8 1.8-3.4 0-2.7-2-4.7-5-4.7Z" />
-    <path d="M6.2 12v2M9.8 12v2M8 12v2" />
-    <circle cx="5.9" cy="7" r="0.9" fill="currentColor" />
-    <circle cx="10.1" cy="7" r="0.9" fill="currentColor" />
+  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" className="shrink-0 drop-shadow-[0_1px_1px_oklch(0.1_0.02_255/0.7)]">
+    <path d="M8 1.2c-3.200 0-5.600 2.300-5.600 5.300 0 1.800.9 3.200 2.200 4.100V13c0 .6.5 1.100 1.100 1.100h.8v-1.300h1.100v1.300h.8c.6 0 1.100-.5 1.100-1.100v-2.400c1.300-.9 2.200-2.300 2.200-4.100 0-3-2.400-5.300-5.600-5.300Z" fill="currentColor" />
+    <path d="M4.300 4.600C5 3.300 6.300 2.500 8 2.500" fill="none" stroke="oklch(1 0 0 / 0.45)" strokeWidth="1" strokeLinecap="round" />
+    <ellipse cx="5.900" cy="7.200" rx="1.500" ry="1.700" fill="oklch(0.16 0.03 255)" />
+    <ellipse cx="10.100" cy="7.200" rx="1.500" ry="1.700" fill="oklch(0.16 0.03 255)" />
+    <path d="M8 9 7.100 10.700h1.800Z" fill="oklch(0.16 0.03 255)" />
+    <path d="M6.700 12.800v1M8 12.800v1M9.300 12.800v1" stroke="oklch(0.16 0.03 255)" strokeWidth="0.7" strokeLinecap="round" />
   </svg>
 );
 
@@ -224,7 +242,17 @@ function MoreRows({ hidden }: { hidden: number }) {
   return <li className="num px-2 py-0.5 text-center text-[10px] text-ink-mute">+{hidden} więcej (limit listy w ustawieniach)</li>;
 }
 
-export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: string, source: string) => void }) {
+export function MeterPanel({
+  snap,
+  onDetail,
+  onHistory,
+  historyOpen,
+}: {
+  snap: OverlaySnapshot;
+  onDetail: (name: string, source: string) => void;
+  onHistory: (tab: 'boss' | 'pvp') => void;
+  historyOpen: boolean;
+}) {
   const { meter, capture, self, pvp } = snap;
   const top = meter.rows[0]?.damage ?? 0;
   const meterList = limitRows(meter.rows, snap.settings.maxPlayerRows);
@@ -245,7 +273,25 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
     <Panel
       id="meter"
       title={shownMode === 'pvp' ? 'PvP Combat' : shownMode === 'lobby' ? 'Lobby' : meter.active ? 'Boss Combat' : 'DPS'}
-      heading={<ModeTabs mode={shownMode} onChange={setMode} lobbyTab={lobbyTab} />}
+      heading={
+        <>
+          <ModeTabs mode={shownMode} onChange={setMode} lobbyTab={lobbyTab} />
+          <button
+            type="button"
+            aria-pressed={historyOpen}
+            aria-label="Historia walk"
+            title={shownMode === 'pvp' ? 'Historia PvP' : 'Historia bossów'}
+            onClick={() => onHistory(shownMode === 'pvp' ? 'pvp' : 'boss')}
+            className={`grid size-6 place-items-center rounded-[6px] ring-1 transition-[background-color,color] duration-150 ${
+              historyOpen ? 'bg-accent/25 text-accent ring-accent/60' : 'bg-row text-ink-dim ring-line hover:text-ink'
+            }`}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M2.5 8a5.5 5.5 0 1 0 1.7-4M2.5 2.5v3h3M8 5v3.2l2.2 1.3" />
+            </svg>
+          </button>
+        </>
+      }
       layout={snap.settings.panels.meter}
       editMode={snap.editMode || snap.altMode}
       sub={
@@ -267,19 +313,7 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
               {lobby.readyCount}/{lobby.members.length} gotowych
             </span>
           )
-        ) : (
-          <>
-            <span className="num text-ink-mute">{compact(meter.total)}</span>
-            <span
-              className={`num flex items-center gap-0.5 ${meter.deaths > 0 ? 'text-bad' : 'text-ink-mute'}`}
-              title="Śmierci drużyny w tym dungeonie (liczone od wejścia, przez wszystkich bossów)"
-              aria-label={`Śmierci drużyny w dungeonie: ${meter.deaths}`}
-            >
-              <SkullIcon />
-              {meter.deaths}
-            </span>
-          </>
-        )
+        ) : null
       }
     >
       {shownMode === 'pvp' ? (
@@ -288,7 +322,15 @@ export function MeterPanel({ snap, onDetail }: { snap: OverlaySnapshot; onDetail
         lobby ? <LobbySection lobby={lobby} /> : <Empty>Brak lobby ani drużyny. Pojawi się po dołączeniu do drużyny lub poczekalni ekspedycji.</Empty>
       ) : (
         <>
-          {meter.focus && <FocusStrip focus={meter.focus} />}
+          {meter.focus ? (
+            <FocusStrip focus={meter.focus} total={meter.total} deaths={meter.deaths} />
+          ) : (
+            (meter.total > 0 || meter.deaths > 0) && (
+              <div className="mx-[6px] mt-[6px] flex items-center gap-2 px-1 text-[11px] leading-none text-ink-mute">
+                <PartyStats total={meter.total} deaths={meter.deaths} />
+              </div>
+            )
+          )}
           {meter.rows.length === 0 ? (
             <Empty>
               {capture.state !== 'locked' && capture.state !== 'demo'

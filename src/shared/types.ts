@@ -142,6 +142,8 @@ export const settingsSchema = z.object({
       edit: z.string().refine(isValidAccelerator, 'invalid shortcut'),
     })
     .default(DEFAULT_HOTKEYS),
+  /** One global shortcut per window that pins / unpins just that window (missing = no shortcut). */
+  panelHotkeys: z.partialRecord(z.enum(PANEL_IDS), z.string().refine(isValidAccelerator, 'invalid shortcut')).default({}),
   /** Toolbar position (always-visible settings bar). */
   toolbar: z
     .object({ x: z.number().min(0).max(10_000), y: z.number().min(0).max(10_000) })
@@ -192,6 +194,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showPing: false,
   showFps: true,
   hotkeys: DEFAULT_HOTKEYS,
+  panelHotkeys: {},
   toolbar: { x: 1100, y: 24 },
 };
 
@@ -565,7 +568,7 @@ export interface OverlaySnapshot {
   /** Odyle energy (basic + charged bonus) as last reported by the game; null until seen. */
   odyle: { basic: number; charged: number; at: number } | null;
   /** Shortcuts the OS refused to register (taken by another app). */
-  hotkeyConflicts: ('pin' | 'edit')[];
+  hotkeyConflicts: string[];
   /** The delay the player really has (network + server lateness), in ms. */
   ping: PingSnapshot;
   /** The game's frames per second; state tells whether the measurement runs or why it cannot. */

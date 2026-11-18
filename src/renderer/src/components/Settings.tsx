@@ -4,7 +4,7 @@ import { FpsAccess } from './FpsAccess';
 import { acceleratorLabel, buildAccelerator, DEFAULT_HOTKEYS, HOTKEY_KEYS, isValidAccelerator, MODIFIERS, splitAccelerator } from '@shared/keys';
 import { DEFAULT_CLASS_COLORS, DEFAULT_COLORS, DEFAULT_TAG_BG, DEFAULT_TAG_TEXT, PANEL_IDS, type ColorSettings, type OverlaySnapshot, type PanelId, type Settings } from '@shared/types';
 
-const PANEL_LABEL: Record<PanelId, string> = { meter: 'DPS i PvP', pvp: 'PvP', target: 'Cel', daily: 'Dzisiaj', nearby: 'W pobliżu', pets: 'Zwierzaki' };
+export const PANEL_LABEL: Record<PanelId, string> = { meter: 'DPS i PvP', pvp: 'PvP', target: 'Cel', daily: 'Dzisiaj', nearby: 'W pobliżu', pets: 'Zwierzaki' };
 const REGIONS: Settings['region'][] = ['eu', 'nae', 'naw', 'sa', 'asia'];
 
 type TabId = 'look' | 'behavior' | 'hotkeys' | 'privacy' | 'about';
@@ -272,6 +272,73 @@ function HotkeyRow({ id, title, hint, snap }: { id: 'pin' | 'edit'; title: strin
   );
 }
 
+const PANEL_KEY_SUGGESTION: Record<PanelId, string> = {
+  meter: 'Control+Alt+1',
+  pvp: 'Control+Alt+2',
+  target: 'Control+Alt+3',
+  daily: 'Control+Alt+4',
+  nearby: 'Control+Alt+5',
+  pets: 'Control+Alt+6',
+};
+
+/** The shortcut that pins / unpins one window: unassigned until you choose modifiers and a key. */
+function PanelHotkeyRow({ id, snap }: { id: PanelId; snap: OverlaySnapshot }) {
+  const current = snap.settings.panelHotkeys[id] ?? null;
+  const title = PANEL_LABEL[id];
+  const conflict = snap.hotkeyConflicts.includes(`panel:${id}`);
+  const set = (accelerator: string | null) => {
+    const { [id]: _drop, ...rest } = snap.settings.panelHotkeys;
+    void _drop;
+    window.overlay.updateSettings({ panelHotkeys: accelerator === null ? rest : { ...rest, [id]: accelerator } });
+  };
+  const { modifiers, key } = current ? splitAccelerator(current) : { modifiers: [] as string[], key: 'A' };
+  const save = (nextModifiers: string[], nextKey: string) => {
+    const accelerator = buildAccelerator(nextModifiers, nextKey);
+    if (isValidAccelerator(accelerator)) set(accelerator);
+  };
+  return (
+    <Row
+      title={title}
+      hint={conflict ? <span className="text-bad">Ten skrót jest zajęty przez inny program albo powtarza się z innym skrótem. Wybierz inną kombinację.</span> : 'Przypina albo odpina tylko to okno (przypięte nie chowa się przy kursorze).'}
+    >
+      {current === null ? (
+        <button type="button" className={button} onClick={() => set(PANEL_KEY_SUGGESTION[id])}>
+          Przypisz skrót
+        </button>
+      ) : (
+        <span className="flex items-center gap-2">
+          <span className="flex gap-1" role="group" aria-label={`Modyfikatory: ${title}`}>
+            {MODIFIERS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={modifiers.includes(m)}
+                onClick={() => save(modifiers.includes(m) ? modifiers.filter((x) => x !== m) : [...modifiers, m], key)}
+                className={`num rounded-[5px] px-2 py-1 text-[11px] font-semibold ring-1 transition-[background-color,color] duration-150 ${
+                  modifiers.includes(m) ? 'bg-accent/25 text-accent ring-accent/60' : 'bg-panel-head text-ink-dim ring-line hover:text-ink'
+                }`}
+              >
+                {MODIFIER_LABEL[m]}
+              </button>
+            ))}
+          </span>
+          <span className="text-ink-mute">+</span>
+          <select className={`${control} w-[68px]`} aria-label={`Klawisz: ${title}`} value={key} onChange={(e) => save(modifiers, e.target.value)}>
+            {HOTKEY_KEYS.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+          <button type="button" className={button} onClick={() => set(null)}>
+            Usuń
+          </button>
+        </span>
+      )}
+    </Row>
+  );
+}
+
 function Hotkeys({ snap }: { snap: OverlaySnapshot }) {
   return (
     <>
@@ -283,6 +350,11 @@ function Hotkeys({ snap }: { snap: OverlaySnapshot }) {
           snap={snap}
         />
         <HotkeyRow id="edit" title="Przesuwanie okien" hint="Włącza i wyłącza tryb przesuwania okien (to samo robi przycisk ze strzałkami na pasku)." snap={snap} />
+      </Section>
+      <Section title="Przypięcie pojedynczych okien">
+        {PANEL_IDS.filter((id) => id !== 'pvp' && (id !== 'nearby' || snap.settings.scanNearby)).map((id) => (
+          <PanelHotkeyRow key={id} id={id} snap={snap} />
+        ))}
       </Section>
       <p className="m-0 text-[11px] leading-snug text-ink-mute">
         Skróty działają także w grze. Kombinacja musi zawierać co najmniej jeden modyfikator (Ctrl, Alt lub Shift). Jeśli inny program już ją zajął, zobaczysz ostrzeżenie. Skrót z samych modyfikatorów

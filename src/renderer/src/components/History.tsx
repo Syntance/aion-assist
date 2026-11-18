@@ -487,18 +487,21 @@ function PvpDays({
 
 /** Saved dungeon runs and the bosses fought in them (like the Encounters list in Abyss Logs). */
 export function HistoryWindow({
+  tab,
+  onTab,
   onClose,
   selectedId,
   onSelect,
   onDeselect,
 }: {
+  tab: 'boss' | 'pvp';
+  onTab: (tab: 'boss' | 'pvp') => void;
   onClose: () => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDeselect: () => void;
 }) {
   const [data, setData] = useState<HistoryData | null>(null);
-  const [tab, setTab] = useState<'boss' | 'pvp'>('boss');
   const reload = useCallback(() => {
     void window.overlay.getHistory().then(setData);
   }, []);
@@ -553,7 +556,7 @@ export function HistoryWindow({
               type="button"
               role="tab"
               aria-selected={tab === id}
-              onClick={() => setTab(id)}
+              onClick={() => onTab(id)}
               className={`rounded-[5px] px-2.5 py-0.5 text-[11px] font-semibold ${tab === id ? 'bg-accent/25 text-accent' : 'text-ink-dim hover:text-ink'}`}
             >
               {id === 'boss' ? 'Bossy' : 'PvP'}

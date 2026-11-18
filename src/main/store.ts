@@ -37,8 +37,37 @@ const killSchema = z.object({
   manual: z.boolean().optional(),
 });
 
+/**
+ * Keeps every setting that is still valid. A single bad or missing value (after an update changed a setting's shape)
+ * must not reset all the others to their defaults.
+ */
+export function salvageSettings(raw: unknown): Settings {
+  const full = settingsSchema.safeParse(raw);
+  if (full.success) return full.data;
+  const src = typeof raw === 'object' && raw !== null ? new Map(Object.entries(raw)) : new Map<string, unknown>();
+  const out: Record<string, unknown> = {};
+  for (const [key, fallback] of Object.entries(DEFAULT_SETTINGS)) {
+    const schema = settingsSchema.shape[key as keyof typeof settingsSchema.shape];
+    const parsed = schema.safeParse(src.get(key));
+    out[key] = parsed.success ? parsed.data : fallback;
+    if (key === 'panels' && !parsed.success) {
+      // one broken window layout keeps the others
+      const savedPanels = src.get('panels');
+      const panelMap = typeof savedPanels === 'object' && savedPanels !== null ? new Map(Object.entries(savedPanels)) : new Map<string, unknown>();
+      const panels: Record<string, unknown> = {};
+      for (const [id, def] of Object.entries(DEFAULT_SETTINGS.panels)) {
+        const one = settingsSchema.shape.panels.shape[id as keyof typeof settingsSchema.shape.panels.shape].safeParse(panelMap.get(id));
+        panels[id] = one.success ? one.data : def;
+      }
+      out[key] = panels;
+    }
+  }
+  const merged = settingsSchema.safeParse(out);
+  return merged.success ? merged.data : structuredClone(DEFAULT_SETTINGS);
+}
+
 const fileSchema = z.object({
-  settings: settingsSchema.catch(DEFAULT_SETTINGS),
+  settings: z.unknown().transform((v) => salvageSettings(v)),
   rivals: z.record(z.string(), rivalSchema).catch({}),
   daily: z.record(z.string(), dailySchema).catch({}),
   killLog: z.array(killSchema).catch([]),
@@ -66,23 +95,52 @@ export class Store {
     const fresh = (): AppData => ({ settings: structuredClone(DEFAULT_SETTINGS), rivals: {}, daily: {}, killLog: [], odyle: {} });
     if (!this.persist || !existsSync(this.file)) return fresh();
     try {
-      return fileSchema.parse(JSON.parse(readFileSync(this.file, 'utf8')));
+      const data = fileSchema.parse(JSON.parse(readFileSync(this.file, 'utf8')));
+      this.lastSaved = JSON.stringify(data);
+      return data;
     } catch (err) {
       console.warn(`[store] ${this.file} is unreadable, starting fresh: ${(err as Error).message}`);
+      try {
+        renameSync(this.file, `${this.file}.corrupt-${Date.now()}`); // keep the old file instead of overwriting it
+      } catch {
+        // nothing to keep
+      }
       return fresh();
     }
   }
 
+  /** The JSON last written (or read), to tell whether anything changed since. */
+  private lastSaved = '';
+  private timer: NodeJS.Timeout | null = null;
+
   save(): void {
     if (!this.persist) return;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
     try {
       mkdirSync(dirname(this.file), { recursive: true });
+      const text = JSON.stringify(this.data);
       const tmp = `${this.file}.tmp`;
-      writeFileSync(tmp, JSON.stringify(this.data), 'utf8');
+      writeFileSync(tmp, text, 'utf8');
       renameSync(tmp, this.file); // atomic replace: a crash never leaves a half-written file
+      this.lastSaved = text;
     } catch (err) {
       console.error(`[store] save failed: ${(err as Error).message}`);
     }
+  }
+
+  /** Saves a moment from now (a burst of changes, e.g. dragging a slider, becomes one write). */
+  saveSoon(delayMs = 400): void {
+    if (!this.persist || this.timer) return;
+    this.timer = setTimeout(() => this.save(), delayMs);
+  }
+
+  /** Saves only when something changed since the last write: a safety net for changes nobody flagged. */
+  saveIfChanged(): void {
+    if (!this.persist) return;
+    if (JSON.stringify(this.data) !== this.lastSaved) this.save();
   }
 }
 

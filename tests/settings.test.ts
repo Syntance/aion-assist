@@ -70,3 +70,12 @@ describe('colour settings', () => {
     expect(settingsPatchSchema.safeParse({ colors: { classes: { dragon: '#ff0000' }, self: null, tagBg: '#112233', tagText: '#ffffff' } }).success).toBe(false);
   });
 });
+
+describe('per-window pin shortcuts', () => {
+  it('default to none, accept valid accelerators for known windows and reject the rest', () => {
+    expect(DEFAULT_SETTINGS.panelHotkeys).toEqual({});
+    expect(settingsPatchSchema.safeParse({ panelHotkeys: { meter: 'Control+Alt+1', pets: 'Shift+F5' } }).success).toBe(true);
+    expect(settingsPatchSchema.safeParse({ panelHotkeys: { meter: 'K' } }).success).toBe(false); // needs a modifier
+    expect(settingsPatchSchema.safeParse({ panelHotkeys: { dragon: 'Control+Alt+1' } }).success).toBe(false);
+  });
+});

@@ -96,7 +96,7 @@ export function PlayerRow({ card, isSelf, fill, primary, secondary, badge, actio
       {actions}
       <span className="num relative flex flex-col items-end">
         <span className={`text-[15px] font-bold leading-tight [text-shadow:0_1px_2px_oklch(0.1_0.02_255/0.8)] ${tone ? TONE[tone] : 'text-ink'}`}>{primary}</span>
-        <span className="text-[10px] text-ink-dim">{secondary}</span>
+        <span className="text-[12px] font-medium leading-tight text-ink [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.85)]">{secondary}</span>
       </span>
     </li>
   );

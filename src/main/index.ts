@@ -18,6 +18,7 @@ import {
   type NamesData,
   type OverlayMode,
   type OverlaySnapshot,
+  type PanelId,
   type PlayerDetail,
 } from '@shared/types';
 import { PetBook } from '@core/pets/petBook';
@@ -502,23 +503,32 @@ function main(): void {
 
   // Global shortcuts are re-registered whenever the settings change; ones the OS refuses
   // (already taken by another app) are reported to the settings window.
-  let hotkeyConflicts: ('pin' | 'edit')[] = [];
+  let hotkeyConflicts: string[] = [];
   let activeHotkeys: string[] = [];
   let registeredHotkeys = '';
   function registerHotkeys(): void {
     const { pin, edit } = settings().hotkeys;
-    const wanted = `${pin}|${edit}`;
+    const panelKeys = Object.entries(settings().panelHotkeys).filter((e): e is [PanelId, string] => typeof e[1] === 'string');
+    const wanted = `${pin}|${edit}|${panelKeys.map(([id, key]) => `${id}=${key}`).join(',')}`;
     if (wanted === registeredHotkeys) return;
     registeredHotkeys = wanted;
     for (const accelerator of activeHotkeys) globalShortcut.unregister(accelerator);
     activeHotkeys = [];
     hotkeyConflicts = [];
-    const bind = (id: 'pin' | 'edit', accelerator: string, action: () => void): void => {
+    const bind = (id: string, accelerator: string, action: () => void): void => {
       if (activeHotkeys.includes(accelerator) || !globalShortcut.register(accelerator, action)) hotkeyConflicts.push(id);
       else activeHotkeys.push(accelerator);
     };
     bind('edit', edit, () => setEditMode(!editMode));
     bind('pin', pin, () => setPinned(!pinned));
+    for (const [id, accelerator] of panelKeys) {
+      bind(`panel:${id}`, accelerator, () => {
+        const layout = settings().panels[id];
+        layout.pinned = !layout.pinned; // pins / unpins just this window
+        store.saveSoon();
+        push();
+      });
+    }
     refreshTray();
     push();
   }
@@ -531,6 +541,7 @@ function main(): void {
     const patch = settingsPatchSchema.safeParse(raw);
     if (!patch.success) return;
     Object.assign(store.data.settings, onlySent(patch.data, raw));
+    store.saveSoon();
     registerHotkeys();
     syncFps();
     push();
@@ -540,6 +551,7 @@ function main(): void {
     if (!patch.success) return;
     const sentLayout = typeof raw === 'object' && raw !== null && 'layout' in raw ? raw.layout : undefined;
     Object.assign(store.data.settings.panels[patch.data.id], onlySent(patch.data.layout, sentLayout));
+    store.saveSoon();
     push();
   });
   ipcMain.on(IPC.resetMeter, () => engine.resetMeter());
@@ -830,6 +842,7 @@ function main(): void {
     eventCounts.clear();
     log.debug(`events/30s: ${counts || 'none'} | capture=${capture.state} ping=${engine.pingSnapshot(Date.now()).ms ?? '-'} fps=${fpsMeter.value(Date.now()) ?? '-'}`);
   }, 30_000);
+  setInterval(() => store.saveIfChanged(), 5_000); // settings, layout and statistics always reach the disk, even without a clean exit
   updater.start();
   app.on('will-quit', () => {
     engine.pollHistory(Date.now() + 3_600_000); // archive a fight still on the screen

@@ -8,7 +8,7 @@ import type { UpdateSnapshot } from '@shared/types';
  * Only the installed build updates itself; `pnpm dev` and demo runs do not.
  */
 
-const FIRST_CHECK_MS = 30_000;
+const FIRST_CHECK_MS = 8_000;
 const CHECK_EVERY_MS = 4 * 60 * 60_000;
 
 const firstLine = (err: unknown): string => (err instanceof Error ? (err.message.split('\n')[0] ?? 'Błąd aktualizacji') : 'Błąd aktualizacji');

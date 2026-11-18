@@ -4,6 +4,7 @@ import { DetailWindow } from './components/Detail';
 import { ClassIconSetContext } from './components/ClassIcon';
 import { DeathPopup } from './components/DeathPopup';
 import { PetFinderWindow } from './components/PetFinder';
+import { UpdateBanner } from './components/UpdateBanner';
 import { PetMapWindow } from './components/PetMap';
 import { PetsPanel } from './components/PetsPanel';
 import { HistoryWindow, PlayersWindow } from './components/History';
@@ -22,6 +23,16 @@ export function App() {
   const [snap, setSnap] = useState<OverlaySnapshot | null>(null);
   const [detail, setDetail] = useState<{ name: string; source: string } | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'boss' | 'pvp'>('boss');
+  /** The History button of the DPS window: opens the tab of the mode you are in (PvP while a player fight is on, otherwise bosses). */
+  const openHistory = (tab: 'boss' | 'pvp') => {
+    if (historyOpen && historyTab === tab) {
+      setHistoryOpen(false);
+      return;
+    }
+    setHistoryTab(tab);
+    setHistoryOpen(true);
+  };
   const [petsOpen, setPetsOpen] = useState(false);
   const [mapPet, setMapPet] = useState<{ id: number; name: string } | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
@@ -76,7 +87,7 @@ export function App() {
     if (!snap) return;
     const toolbarShown = isToolbarShown(snap);
     const rects = [...document.querySelectorAll<HTMLElement>('[data-hit]')]
-      .filter((el) => (el.dataset.hit === 'toolbar' || el.dataset.hit === 'history' || el.dataset.hit === 'players' || el.dataset.hit === 'detail' || el.dataset.hit === 'settings' || el.dataset.hit === 'death' || el.dataset.hit === 'pets' || el.dataset.hit === 'petmap' || el.dataset.hit === 'panel-pinned' ? toolbarShown : snap.visible))
+      .filter((el) => (el.dataset.hit === 'toolbar' || el.dataset.hit === 'history' || el.dataset.hit === 'players' || el.dataset.hit === 'detail' || el.dataset.hit === 'settings' || el.dataset.hit === 'death' || el.dataset.hit === 'pets' || el.dataset.hit === 'petmap' || el.dataset.hit === 'update' || el.dataset.hit === 'panel-pinned' ? toolbarShown : snap.visible))
       .map((el) => el.getBoundingClientRect())
       .map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }));
     const key = JSON.stringify(rects);
@@ -98,7 +109,7 @@ export function App() {
       <main ref={rootRef} className="overlay-root relative h-full">
         <h1 className="sr-only">Aion Assist</h1>
         <DailyPanel snap={snap} />
-        <MeterPanel snap={snap} onDetail={(name, source) => setDetail({ name, source })} />
+        <MeterPanel snap={snap} onDetail={(name, source) => setDetail({ name, source })} onHistory={openHistory} historyOpen={historyOpen} />
         <TargetPanel snap={snap} />
         {snap.settings.scanNearby && <NearbyPanel snap={snap} />}
         <PetsPanel
@@ -115,6 +126,7 @@ export function App() {
       <div className="absolute inset-0 pointer-events-none" style={{ opacity: toolbarShown ? 1 : 0 }}>
         <div className="pointer-events-auto contents">
           {snap.death && <DeathPopup death={snap.death} />}
+          <UpdateBanner update={snap.update} variant="popup" anchor={snap.settings.toolbar} />
           {petsOpen && (
             <div className="absolute left-1/2 top-[64px] z-20 flex -translate-x-1/2 items-start gap-3">
               <PetFinderWindow
@@ -145,6 +157,8 @@ export function App() {
             <div className="absolute left-1/2 top-[64px] z-20 flex -translate-x-1/2 items-start gap-3">
               {historyOpen && (
                 <HistoryWindow
+                  tab={historyTab}
+                  onTab={setHistoryTab}
                   onClose={() => {
                     setHistoryOpen(false);
                     setEncounterId(null);
