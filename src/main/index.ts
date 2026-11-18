@@ -749,6 +749,10 @@ function main(): void {
       }, 10_000);
     }
     child.on('message', (message: CaptureToMain) => {
+      if (message.type === 'ticket') {
+        log.info(`tickets: ${message.hex}`);
+        return;
+      }
       if (message.type === 'discovery') {
         appendFileSync(discoveryLog, `${message.lines.join('\n')}\n`, 'utf8');
         return;

@@ -17,6 +17,8 @@ interface Props {
   tone?: 'leader' | 'ready' | 'waiting';
   /** Makes the row clickable (opens the per-skill detail). */
   onSelect?: () => void;
+  /** Rendered inside the row but may draw outside the panel (e.g. death markers). */
+  aside?: ReactNode;
 }
 
 /** GS when the game sent it (party roster); otherwise item level from the character page. */
@@ -45,12 +47,13 @@ export function GearLine({ card }: { card: PlayerCard }) {
 
 const TONE = { leader: 'text-warm', ready: 'text-good', waiting: 'text-ink-dim' } as const;
 
-export function PlayerRow({ card, isSelf, fill, primary, secondary, badge, actions, tone, onSelect }: Props) {
+export function PlayerRow({ card, isSelf, fill, primary, secondary, badge, actions, tone, onSelect, aside }: Props) {
   const cls = card.className ?? 'unknown';
   return (
     <li
       className={`relative flex h-[34px] items-center gap-2 overflow-hidden rounded-[6px] bg-row px-2 shadow-[inset_0_1px_0_oklch(1_0_0/0.22),inset_0_-1px_0_oklch(0_0_0/0.3),0_2px_3px_oklch(0_0_0/0.35)] ${onSelect ? 'hover:brightness-125' : ''}`}
     >
+      {aside}
       {onSelect && (
         <button
           type="button"

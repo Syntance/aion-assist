@@ -81,6 +81,8 @@ export class CapturePipeline {
     private readonly onRaw?: (dir: 'c2s' | 's2c', data: Uint8Array) => void,
     /** Discovery tap: every server->client TCP segment of the locked flow, before reassembly. */
     private readonly onSegment?: (seg: TcpSegment, nowMs: number) => void,
+    /** Diagnostics: every ticket / energy packet (opcodes 0x0b61, 0x0c61), to see which ones carry Odyle. */
+    private readonly onTicket?: (payload: Uint8Array) => void,
   ) {
     this.decoder = new PacketDecoder(opcodes);
   }
@@ -151,6 +153,7 @@ export class CapturePipeline {
     const delay = new StreamDelay();
     const framer = new StreamFramer((payload) => {
       this.onRaw?.('s2c', payload);
+      if (this.onTicket && payload.length >= 2 && payload[1] === 0x61 && (payload[0] === 0x0b || payload[0] === 0x0c)) this.onTicket(payload);
       const event = this.decoder.decode(payload);
       if (event?.t === 'heartbeat') delay.onHeartbeat(event.clock, this.now);
       if (event) this.onEvent(event);

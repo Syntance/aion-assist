@@ -445,6 +445,26 @@ export interface PvpRow {
   share: number;
   /** Lifetime record against this player (opponents only). */
   record: RivalRecord | null;
+  /** HP exchange with this opponent in the current fight (null for the unknown source). */
+  duel: PvpDuel | null;
+}
+
+/** One opponent against you: how much of whose HP each took. What you took of theirs is capped at 1; what they took of yours is the real share and can pass 1. */
+export interface PvpDuel {
+  /** The opponent's HP left (0..1); 0 once they died; null while their HP is unknown. */
+  remainingPct: number | null;
+  /** What you took of the opponent's max HP; null while their HP is unknown. */
+  dealtPct: number | null;
+  /** What they really took of your max HP (not capped: you can be healed or die and return); null while your HP is unknown. */
+  takenPct: number | null;
+  dead: boolean;
+  /** Raw damage you dealt them and they dealt you in this fight. */
+  dealtDmg: number;
+  takenDmg: number;
+  /** Kill records with this opponent in this fight: you killed them, they killed you, you assisted. */
+  kills: number;
+  deaths: number;
+  assists: number;
 }
 
 /** One kill involving you: you killed someone, someone killed you, or you assisted. */

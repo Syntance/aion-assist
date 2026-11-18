@@ -16,4 +16,5 @@ export type MainToCapture =
 export type CaptureToMain =
   | { type: 'events'; events: GameEvent[] }
   | { type: 'status'; state: CaptureState; detail: string | null; port: number | null; flow?: string | null }
-  | { type: 'discovery'; lines: string[] };
+  | { type: 'discovery'; lines: string[] }
+  | { type: 'ticket'; hex: string };

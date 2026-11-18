@@ -91,6 +91,7 @@ let rawLines: string[] = [];
 /** Stop recording raw packets after this many characters so a long session cannot fill the disk. */
 const RAW_LIMIT_CHARS = 400_000_000;
 let rawChars = 0;
+let ticketDumps = 0;
 
 function start(
   opcodeOverrides: Record<string, string> | null,
@@ -131,6 +132,11 @@ function start(
           rawLines.push(line);
         }
       : undefined,
+    (payload) => {
+      // a few dozen per run, so a busy session cannot flood the log
+      if (ticketDumps++ >= 40) return;
+      post({ type: 'ticket', hex: Buffer.from(payload.subarray(0, 2400)).toString('hex') });
+    },
   );
   if (rawPath) {
     writeFileSync(rawPath, '', 'utf8');

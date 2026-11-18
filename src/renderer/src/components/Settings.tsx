@@ -465,7 +465,7 @@ function Behavior({ snap }: { snap: OverlaySnapshot }) {
             ))}
           </select>
         </Row>
-        <Row title="Reset licznika po przerwie (PvP)" hint="Po ilu sekundach bez trafień starcie z graczami się kończy, zapisuje w historii i następne trafienie zaczyna nowe. Domyślnie 20 s.">
+        <Row title="Reset licznika po przerwie (PvP)" hint="Po ilu sekundach bez trafień starcie z graczami się kończy, zapisuje w historii i następne trafienie zaczyna nowe. Wtedy też zerują się paski % HP przeciwników (śmierć ich nie zeruje). Domyślnie 20 s.">
           <select className={control} aria-label="Reset licznika po przerwie, PvP" value={settings.pvpIdleSec} onChange={(e) => api.updateSettings({ pvpIdleSec: Number(e.target.value) })}>
             {[5, 8, 10, 15, 20, 30, 45, 60, 90, 120].map((n) => (
               <option key={n} value={n}>

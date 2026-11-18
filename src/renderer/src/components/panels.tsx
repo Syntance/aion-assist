@@ -1,10 +1,11 @@
 import { UNKNOWN_SOURCE } from '@shared/opponents';
 import { KdaButtons } from './KdaButtons';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { OverlaySnapshot, PlayerCard, RivalRecord } from '@shared/types';
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import type { OverlaySnapshot, PlayerCard, PvpDuel, PvpRow, RivalRecord } from '@shared/types';
 import { clock, compact, grouped, percent, signed } from '../format';
 import { ClassIcon } from './ClassIcon';
-import { Panel } from './Panel';
+import { Panel, ViewContext } from './Panel';
 import { Renamable } from './Renamable';
 import { GearLine, PlayerRow } from './PlayerRow';
 
@@ -137,8 +138,8 @@ function LobbySection({ lobby }: { lobby: NonNullable<OverlaySnapshot['lobby']> 
 }
 
 /** A filled skull in the colour of the text around it (red where it is used for deaths), with a soft highlight and shade. */
-const SkullIcon = () => (
-  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" className="shrink-0 drop-shadow-[0_1px_1px_oklch(0.1_0.02_255/0.7)]">
+const SkullIcon = ({ size = 14 }: { size?: number }) => (
+  <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden="true" className="shrink-0 drop-shadow-[0_1px_1px_oklch(0.1_0.02_255/0.7)]">
     <path d="M8 1.2c-3.200 0-5.600 2.300-5.600 5.300 0 1.800.9 3.200 2.200 4.100V13c0 .6.5 1.100 1.100 1.100h.8v-1.300h1.100v1.300h.8c.6 0 1.100-.5 1.100-1.100v-2.400c1.300-.9 2.200-2.300 2.200-4.100 0-3-2.400-5.300-5.600-5.300Z" fill="currentColor" />
     <path d="M4.300 4.600C5 3.300 6.300 2.500 8 2.500" fill="none" stroke="oklch(1 0 0 / 0.45)" strokeWidth="1" strokeLinecap="round" />
     <ellipse cx="5.900" cy="7.200" rx="1.500" ry="1.700" fill="oklch(0.16 0.03 255)" />
@@ -268,6 +269,8 @@ export function MeterPanel({
   historyOpen: boolean;
 }) {
   const { meter, capture, self, pvp } = snap;
+  const view = useContext(ViewContext);
+  const meterShow = snap.settings.panels.meter.pinned ? view.shown : view.visible; // same rule as the panel itself
   const top = meter.rows[0]?.damage ?? 0;
   const meterList = limitRows(meter.rows, snap.settings.maxPlayerRows);
   const lobbyTab = snap.settings.showLobby;
@@ -366,13 +369,13 @@ export function MeterPanel({
                   secondary={
                     <>
                       {percent(row.share)} · {compact(row.damage)}
-                      {row.deaths > 0 && (
-                        <span className="ml-1.5 inline-flex items-center gap-0.5 text-bad" title={`Śmierci w tym dungeonie: ${row.deaths}`}>
-                          <SkullIcon />
-                          {row.deaths}
-                        </span>
-                      )}
                     </>
+                  }
+                  aside={
+                    <SideMarks
+                      show={meterShow}
+                      marks={row.deaths > 0 ? [{ key: 'x', n: row.deaths, tone: 'bad', icon: 'skull', title: `Śmierci w tym dungeonie: ${row.deaths}` }] : []}
+                    />
                   }
                 />
               ))}
@@ -407,24 +410,167 @@ export function MeterPanel({
 // --- PvP ----------------------------------------------------------------------------
 
 function RecordBadge({ record }: { record: RivalRecord | null }) {
-  if (!record || record.wins + record.losses === 0) return null;
+  const assists = record?.assists ?? 0;
+  if (!record || record.wins + record.losses + assists === 0) return null;
   return (
-    <span className="num rounded-[3px] bg-panel-head/80 px-1 text-[10px] font-semibold" title="Twój bilans z tym graczem (wygrane–przegrane)">
+    <span className="num rounded-[3px] bg-panel-head/80 px-1 text-[10px] font-semibold" title="Twój bilans z tym graczem ze wszystkich zapisanych walk: zabójstwa – zgony – asysty">
       <span className="text-good">{record.wins}</span>
       <span className="text-ink-mute">–</span>
       <span className="text-bad">{record.losses}</span>
+      <span className="text-ink-mute">–</span>
+      <span className="text-ink">{assists}</span>
     </span>
+  );
+}
+
+const pct = (v: number | null): string => (v === null ? '—' : `${Math.round(v * 100)}%`);
+
+interface SideMark {
+  key: string;
+  n: number;
+  tone: 'good' | 'bad';
+  title: string;
+  icon: 'swords' | 'skull';
+}
+
+/**
+ * Round markers outside the panel, to the right of a row: crossed swords (green = you killed them, red = they killed you)
+ * or a skull (a death in a dungeon), with a count when it happened more than once. The panel clips its content,
+ * so they are drawn in a fixed layer positioned from an anchor in the row.
+ */
+export function SideMarks({ marks, show }: { marks: SideMark[]; show: boolean }) {
+  const anchor = useRef<HTMLSpanElement>(null);
+  const [box, setBox] = useState<{ x: number; y: number; h: number } | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const r = anchor.current?.getBoundingClientRect();
+      if (!r) return;
+      setBox((prev) => (prev && Math.abs(prev.x - r.right) < 0.5 && Math.abs(prev.y - r.top) < 0.5 && Math.abs(prev.h - r.height) < 0.5 ? prev : { x: r.right, y: r.top, h: r.height }));
+    };
+    read();
+    const t = setInterval(read, 150);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <>
+      <span ref={anchor} className="pointer-events-none absolute inset-y-0 right-0 w-0" aria-hidden="true" />
+      {box && show && marks.length > 0 &&
+        createPortal(
+          <div className="pointer-events-none fixed z-50 flex items-center gap-1.5" style={{ left: box.x + 14, top: box.y, height: box.h }}>
+            {marks.map((m) => (
+              <span
+                key={m.key}
+                title={m.title}
+                role="img"
+                aria-label={m.title}
+                className={`relative grid size-[28px] place-items-center rounded-full shadow-[0_3px_8px_oklch(0.1_0.02_255/0.6),inset_0_1px_0_oklch(1_0_0/0.35)] ring-1 ${m.tone === 'good' ? 'bg-good text-[oklch(0.18_0.05_150)] ring-good/70' : 'bg-bad text-[oklch(0.97_0.01_25)] ring-bad/70'}`}
+              >
+                {m.icon === 'skull' ? (
+                  <SkullIcon size={20} />
+                ) : (
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    {[45, -45].map((deg) => (
+                      <g key={deg} transform={`rotate(${deg} 12 12)`}>
+                        <path d="M12 1.200 14.100 12.600H9.900Z" />
+                        <rect x="7.200" y="12.600" width="9.600" height="2" rx="1" />
+                        <rect x="11" y="14.600" width="2" height="5" rx=".6" />
+                        <circle cx="12" cy="21" r="1.500" />
+                      </g>
+                    ))}
+                  </svg>
+                )}
+                {m.n > 1 && <span className="num absolute -right-1 -top-1 rounded-full bg-panel px-[3px] text-[9px] font-extrabold leading-[12px] text-ink ring-1 ring-line">{m.n}</span>}
+              </span>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function DuelIcons({ duel, show }: { duel: PvpDuel; show: boolean }) {
+  const marks: SideMark[] = [];
+  if (duel.kills > 0) marks.push({ key: 'k', n: duel.kills, tone: 'good', icon: 'swords', title: `Zabiłeś go w tym starciu: ${duel.kills}` });
+  if (duel.deaths > 0) marks.push({ key: 'd', n: duel.deaths, tone: 'bad', icon: 'swords', title: `Zabił cię w tym starciu: ${duel.deaths}` });
+  return <SideMarks marks={marks} show={show} />;
+}
+
+/**
+ * An opponent as one tug-of-war bar: from the left what THEY took of your HP, from the right what YOU took of theirs.
+ * Both are shares of HP (not damage); the bar tips toward whoever took the bigger share.
+ */
+function HpDuelRow({ row, onSelect, show }: { row: PvpRow; onSelect: () => void; show: boolean }) {
+  const d = row.duel;
+  const cls = row.card.className ?? 'unknown';
+  const theirs = d?.takenPct ?? 0;
+  const mine = d?.dealtPct ?? 0;
+  const unknown = row.card.name === UNKNOWN_SOURCE;
+  const left = unknown ? 1 : theirs + mine > 0 ? theirs / (theirs + mine) : 0.5;
+  const seg = (color: string) => `linear-gradient(90deg, color-mix(in oklch, ${color} 88%, transparent), color-mix(in oklch, ${color} 52%, transparent))`;
+  return (
+    <li className="overflow-hidden rounded-[6px] bg-row shadow-[inset_0_1px_0_oklch(1_0_0/0.22),inset_0_-1px_0_oklch(0_0_0/0.3),0_2px_3px_oklch(0_0_0/0.35)]">
+     <div className="relative flex h-[38px] items-center gap-2 px-2">
+      {d && <DuelIcons duel={d} show={show} />}
+      <button type="button" onClick={onSelect} aria-label={`Szczegóły: ${row.card.name}`} title="Pokaż szczegóły umiejętności" className="absolute inset-0 z-10 cursor-pointer rounded-[6px] hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-accent" />
+      <span className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(90deg, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.28) 30%, oklch(0 0 0 / 0) 75%)' }} aria-hidden="true" />
+      <span className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(to bottom, oklch(1 0 0 / 0.14), oklch(1 0 0 / 0) 45%), linear-gradient(to top, oklch(0 0 0 / 0.24), oklch(0 0 0 / 0) 55%)' }} aria-hidden="true" />
+      <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: `var(--color-cls-${cls})` }} aria-hidden="true" />
+      <span className="relative flex w-[38%] min-w-0 shrink-0 items-center gap-2">
+        <ClassIcon className={row.card.className} size={26} />
+        <span className="flex min-w-0 flex-col">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-[13px] font-semibold text-ink [text-shadow:0_1px_2px_oklch(0.1_0.02_255/0.8)]">{row.card.name}</span>
+            <RecordBadge record={row.record} />
+          </span>
+          <GearLine card={row.card} />
+        </span>
+      </span>
+      {d ? (
+        /* the HP bar starts after the name block so it never runs under the nick */
+        <span className="relative my-1 flex-1 self-stretch overflow-hidden rounded-[4px]">
+          <span className="bar-fill absolute inset-0" style={{ transform: `scaleX(${left})`, transformOrigin: 'left center', background: seg('var(--color-bad)') }} aria-hidden="true" />
+          <span className="bar-fill absolute inset-0" style={{ transform: `scaleX(${1 - left})`, transformOrigin: 'right center', background: seg('var(--color-good)') }} aria-hidden="true" />
+          {/* what they took of your HP rides the end of the red bar; what you took of theirs sits at the right edge */}
+          <span
+            className="num pointer-events-none absolute inset-y-0 flex items-center pr-1.5 text-[12px] font-bold text-ink transition-[left] duration-[260ms] [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95)]"
+            style={{ left: `max(${left * 100}%, 42px)`, transform: 'translateX(-100%)' }}
+            title="Tyle twojego HP zabrał ci on"
+          >
+            {pct(d.takenPct)}
+          </span>
+          {!unknown && (
+            <span className="num pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-[12px] font-bold text-ink [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95)]" title="Tyle HP wroga zabrałeś ty">
+              {pct(d.dealtPct)}
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className="num relative ml-auto text-[13px] font-bold text-ink">{compact(row.damage)}</span>
+      )}
+     </div>
+     {row.card.name !== UNKNOWN_SOURCE && (
+      <div className="flex items-center justify-between gap-2 px-2 pb-1 pt-0.5">
+       <KdaButtons name={row.card.name} />
+       {d && (
+        <span className="num flex gap-2 text-[10px] font-semibold text-ink-dim">
+         <span title="Jego obrażenia na tobie"><span className="mr-0.5 text-[9px] uppercase tracking-[0.06em]">on</span><b className="font-bold text-ink">{compact(d.takenDmg)}</b></span>
+         <span title="Twoje obrażenia na tym graczu"><span className="mr-0.5 text-[9px] uppercase tracking-[0.06em]">ty</span><b className="font-bold text-ink">{compact(d.dealtDmg)}</b></span>
+        </span>
+       )}
+      </div>
+     )}
+    </li>
   );
 }
 
 /** PvP view inside the DPS window: both sides of the current player fight. */
 function PvpBody({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: string, source: string) => void }) {
   const { pvp } = snap;
+  const view = useContext(ViewContext);
+  const panelOn = snap.settings.panels.meter.pinned ? view.shown : view.visible; // same rule as the panel itself
   const mineList = limitRows(pvp.mine, snap.settings.maxPlayerRows);
   const theirsList = limitRows(pvp.theirs, snap.settings.maxPlayerRows);
-  const sum = pvp.mineTotal + pvp.theirsTotal;
-  const mineShare = sum > 0 ? pvp.mineTotal / sum : 0.5;
-  const seconds = Math.max(1, pvp.durationMs / 1000);
   const sideHead = 'px-2.5 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-[0.08em]';
   return (
     <>
@@ -442,29 +588,10 @@ function PvpBody({ snap, onDetail }: { snap: OverlaySnapshot; onDetail: (name: s
           <h3 className={`${sideHead} m-0 text-bad`}>Przeciwnicy</h3>
           <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
             {theirsList.shown.map((row) => (
-              <PlayerRow
-                key={row.card.name}
-                card={row.card}
-                isSelf={false}
-                fill={row.share}
-                onSelect={() => onDetail(row.card.name, 'livepvp')}
-                primary={compact(row.damage)}
-                secondary={<>{compact(row.dps)}/s · {percent(row.share)}</>}
-                badge={<RecordBadge record={row.record} />}
-                actions={row.card.name === UNKNOWN_SOURCE ? undefined : <KdaButtons name={row.card.name} />}
-              />
+              <HpDuelRow key={row.card.name} row={row} show={panelOn} onSelect={() => onDetail(row.card.name, 'livepvp')} />
             ))}
             <MoreRows hidden={theirsList.hidden} />
           </ol>
-          <div className="mx-[5px] flex h-1 overflow-hidden rounded-full bg-bad" aria-hidden="true">
-            <span className="bar-fill block h-full w-full bg-good" style={{ transform: `scaleX(${mineShare})` }} />
-          </div>
-          <dl className="num m-0 grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-2.5 py-1.5 text-[11px]">
-            <dt className="text-good">Twoja strona</dt>
-            <dd className="m-0 text-right text-ink-dim">{grouped(pvp.mineTotal)} · {compact(pvp.mineTotal / seconds)}/s</dd>
-            <dt className="text-bad">Przeciwnicy</dt>
-            <dd className="m-0 text-right text-ink-dim">{grouped(pvp.theirsTotal)} · {compact(pvp.theirsTotal / seconds)}/s</dd>
-          </dl>
         </>
       )}
     </>
