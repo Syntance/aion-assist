@@ -1,6 +1,6 @@
 # Wydawanie aktualizacji (GitHub Releases)
 
-Aplikacja sama sprawdza GitHub co kilka godzin, pobiera nowszą wersję w tle i instaluje ją przy zamknięciu albo na kliknięcie („Zainstaluj i uruchom ponownie” w ustawieniach → O aplikacji). Znajomy instaluje pierwszy raz ręcznie, potem aktualizacje przychodzą same.
+Aplikacja sama sprawdza GitHub co godzinę, pobiera nowszą wersję w tle i instaluje ją przy zamknięciu albo na kliknięcie („Zainstaluj i uruchom ponownie” w ustawieniach → O aplikacji). Znajomy instaluje pierwszy raz ręcznie, potem aktualizacje przychodzą same.
 
 ## Konfiguracja (zrobiona)
 

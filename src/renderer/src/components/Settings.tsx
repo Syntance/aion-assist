@@ -582,7 +582,7 @@ function UpdateSection({ snap }: { snap: OverlaySnapshot }) {
           </button>
         )}
       </Row>
-      <Row title="Sprawdzaj automatycznie" hint="Co kilka godzin pyta GitHub, czy jest nowsza wersja, i pobiera ją w tle. Instalacja następuje dopiero po zamknięciu aplikacji albo na twoje kliknięcie.">
+      <Row title="Sprawdzaj automatycznie" hint="Co godzinę pyta GitHub, czy jest nowsza wersja, i pobiera ją w tle. Instalacja następuje dopiero po zamknięciu aplikacji albo na twoje kliknięcie.">
         <Switch label="Sprawdzaj aktualizacje automatycznie" checked={settings.autoUpdate} onChange={(v) => api.updateSettings({ autoUpdate: v })} />
       </Row>
     </Section>
