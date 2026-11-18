@@ -154,7 +154,11 @@ export function Toolbar({
       <ToolButton label={pinned ? 'Odepnij (auto-ukrywanie)' : 'Przypnij (zawsze widoczna)'} active={pinned} onClick={() => api.setPinned(!pinned)}>
         <Icon d={ICON_PIN} />
       </ToolButton>
-      <ToolButton label={`Ukryj wszystkie okna (${acceleratorLabel(settings.hotkeys.hideAll)} przywraca)`} onClick={() => api.setOverlayMode('hide')}>
+      <ToolButton
+        label={`${snap.overlayMode === 'hide' ? 'Pokaż okna' : 'Ukryj wszystkie okna'} (${acceleratorLabel(settings.hotkeys.hideAll)})`}
+        active={snap.overlayMode === 'hide'}
+        onClick={() => api.setOverlayMode(snap.overlayMode === 'hide' ? 'auto' : 'hide')}
+      >
         <Icon d={ICON_HIDE} />
       </ToolButton>
       <ToolButton

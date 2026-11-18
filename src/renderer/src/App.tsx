@@ -19,6 +19,11 @@ function isToolbarShown(snap: OverlaySnapshot): boolean {
   return snap.gameFocused || snap.editMode || snap.pinned || snap.overlayMode === 'show';
 }
 
+/** The bar itself stays when the other windows are hidden (its eye button is how you bring them back). */
+function isBarShown(snap: OverlaySnapshot): boolean {
+  return isToolbarShown(snap) || (snap.overlayMode === 'hide' && snap.gameFocused);
+}
+
 export function App() {
   const [snap, setSnap] = useState<OverlaySnapshot | null>(null);
   const [detail, setDetail] = useState<{ name: string; source: string } | null>(null);
@@ -86,8 +91,9 @@ export function App() {
   useLayoutEffect(() => {
     if (!snap) return;
     const toolbarShown = isToolbarShown(snap);
+    const barShown = isBarShown(snap);
     const rects = [...document.querySelectorAll<HTMLElement>('[data-hit]')]
-      .filter((el) => (el.dataset.hit === 'toolbar' || el.dataset.hit === 'history' || el.dataset.hit === 'players' || el.dataset.hit === 'detail' || el.dataset.hit === 'settings' || el.dataset.hit === 'death' || el.dataset.hit === 'pets' || el.dataset.hit === 'petmap' || el.dataset.hit === 'update' || el.dataset.hit === 'panel-pinned' ? toolbarShown : snap.visible))
+      .filter((el) => el.dataset.hit === 'toolbar' ? barShown : (el.dataset.hit === 'history' || el.dataset.hit === 'players' || el.dataset.hit === 'detail' || el.dataset.hit === 'settings' || el.dataset.hit === 'death' || el.dataset.hit === 'pets' || el.dataset.hit === 'petmap' || el.dataset.hit === 'update' || el.dataset.hit === 'panel-pinned' ? toolbarShown : snap.visible))
       .map((el) => el.getBoundingClientRect())
       .map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }));
     const key = JSON.stringify(rects);
@@ -192,7 +198,7 @@ export function App() {
       </div>
       <Toolbar
         snap={snap}
-        shown={toolbarShown}
+        shown={isBarShown(snap)}
         historyOpen={historyOpen}
         onHistory={() => setHistoryOpen((v) => !v)}
         settingsOpen={settingsOpen}

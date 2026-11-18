@@ -352,7 +352,7 @@ function Hotkeys({ snap }: { snap: OverlaySnapshot }) {
           snap={snap}
         />
         <HotkeyRow id="edit" title="Przesuwanie okien" hint="Włącza i wyłącza tryb przesuwania okien (to samo robi przycisk ze strzałkami na pasku)." snap={snap} />
-        <HotkeyRow id="hideAll" title="Ukryj wszystkie okna" hint="Chowa całą nakładkę (okna i pasek); ten sam skrót ją przywraca. Działa też z menu ikony w zasobniku systemowym i z przycisku oka na pasku." snap={snap} />
+        <HotkeyRow id="hideAll" title="Ukryj wszystkie okna" hint="Chowa wszystkie okna oprócz paska; ten sam skrót je przywraca. Działa też z menu ikony w zasobniku systemowym i z przycisku oka na pasku." snap={snap} />
       </Section>
       <Section title="Przypięcie pojedynczych okien">
         {PANEL_IDS.filter((id) => id !== 'pvp').map((id) => (
