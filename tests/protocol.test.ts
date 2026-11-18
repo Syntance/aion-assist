@@ -325,3 +325,12 @@ describe('capture pipeline', () => {
     expect(status).toEqual([13328, null]);
   });
 });
+
+describe('damage packets with the 0x30 flag pair (live 2026-11-18)', () => {
+  it('reads the actor of a hit whose switch byte is 0x36, with no extra varint', () => {
+    // captured Abyss session: iShadow (10461) hits target 31361 for 10313; the old decoder read actor 24 and dropped it
+    const payload = Buffer.from('04 38 81 f5 01 36 04 dd 51 18 48 c7 00 4a 02 80 00 01 6c 29 d8 4d 01 00 00 00 9c 85 01 c9 50 01 87 08 01 00 bf 09'.replace(/ /g, ''), 'hex');
+    const ev = new PacketDecoder(DEFAULT_OPCODES).decode(payload);
+    expect(ev).toMatchObject({ t: 'damage', actor: 10461, target: 31361, amount: 10313 });
+  });
+});

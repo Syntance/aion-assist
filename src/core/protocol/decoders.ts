@@ -34,7 +34,6 @@ function decodeDamage(p: Uint8Array): GameEvent | null {
   const kind = sw & 0x0f;
   const blockLen = DAMAGE_BLOCK[kind];
   if (blockLen === undefined) return null; // miss / resist / non-damage record
-  if ((sw & 0x30) === 0x30) r.varint();
   r.varint();
   const actor = r.varint();
   const skill = r.u32();
