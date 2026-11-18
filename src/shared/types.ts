@@ -451,8 +451,10 @@ export interface PvpRow {
 
 /** One opponent against you: how much of whose HP each took. What you took of theirs is capped at 1; what they took of yours is the real share and can pass 1. */
 export interface PvpDuel {
-  /** The opponent's HP left (0..1); 0 once they died; null while their HP is unknown. */
+  /** The opponent's HP left at the end of the exchange (0..1); 0 once they died; null while their HP is unknown. */
   remainingPct: number | null;
+  /** Your HP left at the end of the exchange (0..1); 0 once they killed you; null while your HP is unknown. */
+  selfRemainingPct: number | null;
   /** What you took of the opponent's max HP; null while their HP is unknown. */
   dealtPct: number | null;
   /** What they really took of your max HP (not capped: you can be healed or die and return); null while your HP is unknown. */

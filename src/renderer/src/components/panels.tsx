@@ -521,16 +521,16 @@ function DuelIcons({ duel, show }: { duel: PvpDuel; show: boolean }) {
 }
 
 /**
- * An opponent as one tug-of-war bar: from the left what THEY took of your HP, from the right what YOU took of theirs.
- * Both are shares of HP (not damage); the bar tips toward whoever took the bigger share.
+ * An opponent as one tug-of-war bar of the HP both sides have LEFT at the end of the exchange: red from the left is
+ * the opponent's, green from the right is yours. The bar tips toward the healthier side (all green = you won it).
  */
 function HpDuelRow({ row, onSelect, show }: { row: PvpRow; onSelect: () => void; show: boolean }) {
   const d = row.duel;
   const cls = row.card.className ?? 'unknown';
-  const theirs = d?.takenPct ?? 0;
-  const mine = d?.dealtPct ?? 0;
   const unknown = row.card.name === UNKNOWN_SOURCE;
-  const left = unknown ? 1 : theirs + mine > 0 ? theirs / (theirs + mine) : 0.5;
+  const foeLeft = d?.remainingPct ?? null;
+  const meLeft = d?.selfRemainingPct ?? null;
+  const left = unknown ? 1 : foeLeft !== null && meLeft !== null ? (foeLeft + meLeft > 0 ? foeLeft / (foeLeft + meLeft) : 0.5) : foeLeft !== null ? 1 : meLeft !== null ? 0 : 0.5;
   const seg = (color: string) => `linear-gradient(90deg, color-mix(in oklch, ${color} 88%, transparent), color-mix(in oklch, ${color} 52%, transparent))`;
   return (
     <li className="overflow-hidden rounded-[6px] bg-row shadow-[inset_0_1px_0_oklch(1_0_0/0.22),inset_0_-1px_0_oklch(0_0_0/0.3),0_2px_3px_oklch(0_0_0/0.35)]">
@@ -555,17 +555,17 @@ function HpDuelRow({ row, onSelect, show }: { row: PvpRow; onSelect: () => void;
         <span className="relative my-1 flex-1 self-stretch overflow-hidden rounded-[4px]">
           <span className="bar-fill absolute inset-0" style={{ transform: `scaleX(${left})`, transformOrigin: 'left center', background: seg('var(--color-bad)') }} aria-hidden="true" />
           <span className="bar-fill absolute inset-0" style={{ transform: `scaleX(${1 - left})`, transformOrigin: 'right center', background: seg('var(--color-good)') }} aria-hidden="true" />
-          {/* what they took of your HP rides the end of the red bar; what you took of theirs sits at the right edge */}
+          {/* the opponent's HP left rides the end of the red bar; yours sits at the right edge */}
           <span
             className="num pointer-events-none absolute inset-y-0 flex items-center pr-1.5 text-[12px] font-bold text-ink transition-[left] duration-[260ms] [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95)]"
             style={{ left: `max(${left * 100}%, 42px)`, transform: 'translateX(-100%)' }}
-            title="Tyle twojego HP zabrał ci on"
+            title={unknown ? 'Tyle twojego HP zabrało nieznane źródło' : 'Tyle HP zostało jemu na koniec starcia (0% = zabity)'}
           >
-            {pct(d.takenPct)}
+            {unknown ? pct(d.takenPct) : `ON ${pct(foeLeft)}`}
           </span>
           {!unknown && (
-            <span className="num pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-[12px] font-bold text-ink [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95)]" title="Tyle HP wroga zabrałeś ty">
-              {pct(d.dealtPct)}
+            <span className="num pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-[12px] font-bold text-ink [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95)]" title="Tyle HP zostało tobie na koniec starcia (0% = zginąłeś)">
+              TY {pct(meLeft)}
             </span>
           )}
         </span>

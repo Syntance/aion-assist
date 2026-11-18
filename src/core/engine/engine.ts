@@ -64,6 +64,8 @@ export interface EngineStore {
   odyle?: Record<string, { basic: number; charged: number; at: number }>;
   /** Last max HP the game reported per character (it arrives rarely, so PvP percentages need it remembered). */
   maxHp?: Record<string, number>;
+  /** The character played last: lets Odyle and max HP come back at startup, before the game names the character again. */
+  lastSelf?: string;
 }
 
 const KILL_LOG_MAX = 400;
@@ -281,6 +283,24 @@ const RUN_GAP_MS = 45 * 60_000;
 const BOSS_MIN_HP = 1_500_000;
 /** Hits this soon after a foe's death still count for the life that just ended. */
 const DUEL_DEATH_GRACE_MS = 5000;
+/** HP frames this soon after the last exchange with a foe still belong to the fight (the final blow's HP arrives right after it). */
+const DUEL_HP_TRACK_MS = 3000;
+
+interface DuelEntry {
+  id: number;
+  dealt: number;
+  taken: number;
+  dead: boolean;
+  deadAt: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  /** Time of the last hit either way. */
+  lastAt: number;
+  /** HP (absolute) of you and of the foe as of the end of the exchange; null until a frame was seen. */
+  selfHp: number | null;
+  foeHp: number | null;
+}
 
 /** Open-world NPCs (world bosses and mobs) have codes 21xxxxx; dungeon NPCs are 23xxxxx and up. */
 export const isWorldNpc = (code: number): boolean => code >= 2_100_000 && code < 2_200_000;
@@ -344,7 +364,7 @@ export class Engine {
   private pvpMine: Fight | null = null;
   private pvpTheirs: Fight | null = null;
   /** Per opponent (by name) in the current player fight: damage you dealt them, damage they dealt you, and whether they died. */
-  private duels = new Map<string, { id: number; dealt: number; taken: number; dead: boolean; deadAt: number; kills: number; deaths: number; assists: number }>();
+  private duels = new Map<string, DuelEntry>();
   private archivedPvp: Fight | null = null;
   private ping: { ms: number; net: number | null; late: number | null; peak: number | null; at: number } | null = null;
   /** Entities that died (players and NPCs): a dead boss no longer holds its fight open. */
@@ -367,7 +387,13 @@ export class Engine {
   /** Last time you killed or were killed by a player: a short fight that ended this way is still worth saving. */
   private lastDuelEndAt = 0;
 
-  constructor(private readonly opts: EngineOptions) {}
+  constructor(private readonly opts: EngineOptions) {
+    const last = opts.store.lastSelf;
+    if (last) {
+      this.restoreOdyle(last);
+      this.selfMaxHp = opts.store.maxHp?.[last] ?? 0;
+    }
+  }
 
   private pvpIdleMs(): number {
     return this.opts.pvpIdleMs?.() ?? PVP_IDLE_DEFAULT_MS;
@@ -440,12 +466,13 @@ export class Engine {
     // A pool the packet does not mention keeps its last value. Other packets of the same kind (not only the login
     // list) arrive without an Odyle entry, so a missing entry is "no news", never "zero".
     if (ev.basic === null && ev.charged === null) return;
-    // a change without a known starting point (the app started after the login list) would show a made-up zero
-    if (!ev.snapshot && prev === null) return;
+    // a change naming only one pool, without a known starting point (the app started after the login list), would show a made-up zero
+    if (!ev.snapshot && prev === null && (ev.basic === null || ev.charged === null)) return;
     const basic = ev.basic ?? prev?.basic ?? 0;
     const charged = ev.charged ?? prev?.charged ?? 0;
     this.odyleNow = { basic, charged, at: now };
-    if (this.selfName) this.saveOdyle(this.selfName);
+    const owner = this.selfName ?? this.opts.store.lastSelf;
+    if (owner) this.saveOdyle(owner);
   }
 
   odyleSnapshot(): { basic: number; charged: number; at: number } | null {
@@ -538,6 +565,7 @@ export class Engine {
         this.selfId = ev.id;
         if (ev.name) {
           this.selfName = ev.name;
+          this.opts.store.lastSelf = ev.name;
           this.restoreOdyle(ev.name);
           this.selfMaxHp = Math.max(this.selfMaxHp, this.opts.store.maxHp?.[ev.name] ?? 0);
           const profile = this.profile(ev.name);
@@ -705,6 +733,13 @@ export class Engine {
           this.meter.closed = true;
         }
         this.hp.set(ev.id, { cur: nextCur, max: ev.max ?? prev?.max ?? null, at: now });
+        if (ev.cur !== null) {
+          for (const d of this.duels.values()) {
+            if (now - d.lastAt > DUEL_HP_TRACK_MS) continue; // regeneration after the fight is not part of its result
+            if (ev.id === this.selfId) d.selfHp = ev.cur;
+            else if (ev.id === d.id) d.foeHp = ev.cur;
+          }
+        }
         if (ev.id === this.selfId && ev.max !== null && ev.max > 0) {
           this.selfMaxHp = ev.max;
           if (this.selfName) (this.opts.store.maxHp ??= {})[this.selfName] = ev.max;
@@ -908,7 +943,7 @@ export class Engine {
       (this.pvpMine as Fight).add(actor, amount, crit, now, info);
       (this.pvpTheirs as Fight).touch(target); // the opponent shows up (and is saved) even if they never hit back
       if (actorId === this.selfId) {
-        this.duel(foe, foeId, now).dealt += amount;
+        this.touchDuel(this.duel(foe, foeId, now), now).dealt += amount;
         this.rival(target, now).dealt += amount;
         this.target = { name: target, source: 'attacked', at: now };
         this.lookup(this.profile(target));
@@ -916,7 +951,7 @@ export class Engine {
     } else {
       (this.pvpTheirs as Fight).add(actor, amount, crit, now, info);
       if (targetId === this.selfId) {
-        this.duel(foe, foeId, now).taken += amount;
+        this.touchDuel(this.duel(foe, foeId, now), now).taken += amount;
         this.rival(actor, now).taken += amount;
         if (!this.target || this.target.source === 'attackedBy' || now - this.target.at > TARGET_HOLD_MS) {
           this.target = { name: actor, source: 'attackedBy', at: now };
@@ -1041,7 +1076,10 @@ export class Engine {
     if (this.isSelfName(foe)) return;
     const d = this.duel(foe, this.duels.get(foe)?.id ?? -3, entry.at);
     if (entry.kind === 'kill') d.kills = Math.max(0, d.kills + delta);
-    else if (entry.kind === 'death') d.deaths = Math.max(0, d.deaths + delta);
+    else if (entry.kind === 'death') {
+      d.deaths = Math.max(0, d.deaths + delta);
+      if (delta > 0) d.selfHp = 0;
+    }
     else d.assists = Math.max(0, d.assists + delta);
   }
 
@@ -1353,11 +1391,21 @@ export class Engine {
     return max !== null && max > 0 ? max : null;
   }
 
-  private duel(name: string, id: number, now: number): { id: number; dealt: number; taken: number; dead: boolean; deadAt: number; kills: number; deaths: number; assists: number } {
+  private duel(name: string, id: number, now: number): DuelEntry {
     let d = this.duels.get(name);
     // a foe who died and is hit again later is on a new life: his tally starts over (hits right after the kill still belong to the old one)
     if (d && d.id < 0 && id >= 0) d.id = id; // a placeholder made by a kill record before any damage: adopt the real id
-    else if (!d || d.id !== id || (d.dead && now - d.deadAt > DUEL_DEATH_GRACE_MS)) this.duels.set(name, (d = { id, dealt: 0, taken: 0, dead: false, deadAt: 0, kills: 0, deaths: 0, assists: 0 }));
+    else if (!d || d.id !== id || (d.dead && now - d.deadAt > DUEL_DEATH_GRACE_MS)) this.duels.set(name, (d = { id, dealt: 0, taken: 0, dead: false, deadAt: 0, kills: 0, deaths: 0, assists: 0, lastAt: now, selfHp: null, foeHp: null }));
+    return d;
+  }
+
+  /** A hit in this duel: remember when, and the HP both sides have right now. */
+  private touchDuel(d: DuelEntry, now: number): DuelEntry {
+    d.lastAt = now;
+    const mine = this.selfId !== null ? (this.hp.get(this.selfId)?.cur ?? null) : null;
+    const theirs = d.id >= 0 ? (this.hp.get(d.id)?.cur ?? null) : null;
+    if (mine !== null) d.selfHp = mine;
+    if (theirs !== null) d.foeHp = theirs;
     return d;
   }
 
@@ -1368,14 +1416,14 @@ export class Engine {
     const foeMax = this.maxHpOf(d.id);
     const selfSeen = Math.max(this.selfMaxHp, this.selfId !== null ? (this.maxHpOf(this.selfId) ?? 0) : 0);
     const selfMax = selfSeen > 0 ? selfSeen : null;
-    // a foe's HP is 100%: heals can make your damage add up to more, but the share never passes 1
+    // what both sides have LEFT at the end of the exchange (a dead side has nothing), not a running sum of damage
+    const left = (hp: number | null, max: number | null): number | null => (hp !== null && max !== null ? Math.min(1, Math.max(0, hp / max)) : null);
+    const remainingPct = d.dead ? 0 : left(d.foeHp, foeMax);
+    const selfRemainingPct = d.selfHp === 0 ? 0 : left(d.selfHp, selfMax);
+    // shares of max HP that the damage summed up to, capped at 100% (heals and shields make the raw sums meaningless)
     const dealtPct = foeMax !== null ? Math.min(1, d.dealt / foeMax) : null;
-    const cur = this.hp.get(d.id)?.cur ?? null;
-    const remainingPct = d.dead ? 0 : foeMax !== null && cur !== null ? Math.min(1, cur / foeMax) : dealtPct !== null ? Math.max(0, 1 - dealtPct) : null;
-    // what they took of your max HP, never shown above 100% (heals, shields, a death and a comeback, or a max HP we only
-    // know from partial frames would otherwise give numbers like 331%)
     const takenPct = selfMax !== null ? Math.min(1, d.taken / selfMax) : null;
-    return { remainingPct, dealtPct, takenPct, dead: d.dead, dealtDmg: d.dealt, takenDmg: d.taken, kills: d.kills, deaths: d.deaths, assists: d.assists };
+    return { remainingPct, selfRemainingPct, dealtPct, takenPct, dead: d.dead, dealtDmg: d.dealt, takenDmg: d.taken, kills: d.kills, deaths: d.deaths, assists: d.assists };
   }
 
   pvpSnapshot(now: number): PvpSnapshot {

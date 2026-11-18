@@ -73,6 +73,7 @@ const fileSchema = z.object({
   killLog: z.array(killSchema).catch([]),
   odyle: z.record(z.string(), z.object({ basic: z.number(), charged: z.number(), at: z.number() })).catch({}),
   maxHp: z.record(z.string(), z.number()).catch({}),
+  lastSelf: z.string().optional().catch(undefined),
 });
 
 export interface AppData extends EngineStore {

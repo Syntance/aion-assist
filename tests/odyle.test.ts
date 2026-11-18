@@ -29,6 +29,16 @@ describe('Odyle energy', () => {
     expect(decoder.decode(hex('0C 61 00 04 0C 00 00 00 0E 02'))).toBeNull();
   });
 
+  it('applies an update that names both pools even without a starting point, and keeps it for the last character', () => {
+    const store: EngineStore = { rivals: {}, daily: {}, lastSelf: 'SilentDeath' };
+    const e = new Engine({ store, fightIdleMs: () => 8000 });
+    e.apply({ t: 'odyle', snapshot: false, basic: null, charged: 465 }, T0); // one pool only: still ignored
+    expect(e.odyleSnapshot()).toBeNull();
+    e.apply({ t: 'odyle', snapshot: false, basic: 15, charged: 465 }, T0 + 1); // real packet: 0c 01 87 93 03 0f d1 03
+    expect(e.odyleSnapshot()).toMatchObject({ basic: 15, charged: 465 });
+    expect(store.odyle?.['SilentDeath']).toMatchObject({ basic: 15, charged: 465 });
+  });
+
   it('keeps both pools, keeps a pool a packet does not mention, ignores lists without Odyle, and remembers it per character', () => {
     const store: EngineStore = { rivals: {}, daily: {} };
     const e = new Engine({ store, fightIdleMs: () => 8000 });
@@ -44,7 +54,7 @@ describe('Odyle energy', () => {
 
     // a restart: the last known value comes back once the character is known
     const again = new Engine({ store, fightIdleMs: () => 8000 });
-    expect(again.odyleSnapshot()).toBeNull();
+    expect(again.odyleSnapshot()).toMatchObject({ basic: 320, charged: 50 }); // the last character comes back before the game names it
     again.apply({ t: 'self', id: 1, name: 'SilentDeath', server: 1318, classCode: 18, level: 45 }, T0 + 10);
     expect(again.odyleSnapshot()).toMatchObject({ basic: 320, charged: 50 });
   });

@@ -215,3 +215,30 @@ describe('who killed whom', () => {
     expect(store.killLog).toHaveLength(400);
   });
 });
+
+describe('HP left at the end of an exchange', () => {
+  it('shows what both sides have left, not the damage summed up, and freezes it after the fight', () => {
+    const { e } = setup();
+    e.apply({ t: 'hp', id: SELF, cur: null, max: 30_000 }, T0);
+    e.apply({ t: 'hp', id: FOE, cur: 30_000, max: 30_000 }, T0);
+    for (let i = 0; i < 8; i++) dmg(SELF, FOE, T0 + 100 + i * 100, e); // 8000 dealt in total
+    e.apply({ t: 'hp', id: FOE, cur: 27_000, max: null }, T0 + 950); // he healed most of it back
+    dmg(FOE, SELF, T0 + 1000, e);
+    e.apply({ t: 'hp', id: SELF, cur: 21_000, max: null }, T0 + 1050);
+    const duel = e.pvpSnapshot(T0 + 1100).theirs[0]?.duel;
+    expect(duel?.remainingPct).toBeCloseTo(0.9, 2);
+    expect(duel?.selfRemainingPct).toBeCloseTo(0.7, 2);
+    // regeneration after the fight does not change the result
+    e.apply({ t: 'hp', id: SELF, cur: 30_000, max: null }, T0 + 20_000);
+    expect(e.pvpSnapshot(T0 + 20_100).theirs[0]?.duel?.selfRemainingPct).toBeCloseTo(0.7, 2);
+  });
+
+  it('shows 0% for the side that died', () => {
+    const { e } = setup();
+    e.apply({ t: 'hp', id: SELF, cur: null, max: 30_000 }, T0);
+    e.apply({ t: 'hp', id: FOE, cur: 30_000, max: 30_000 }, T0);
+    dmg(SELF, FOE, T0 + 100, e);
+    e.apply({ t: 'kill', target: SELF, killerId: FOE, killerName: 'Milenium', killerServer: 2301, skill: 1 }, T0 + 1000);
+    expect(e.pvpSnapshot(T0 + 1100).theirs[0]?.duel).toMatchObject({ selfRemainingPct: 0 });
+  });
+});
