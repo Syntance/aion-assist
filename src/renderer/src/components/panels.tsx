@@ -39,10 +39,10 @@ function PartyStats({ total, deaths }: { total: number; deaths: number }) {
   return (
     <>
       <span>
-        Party DMG <b className="num font-semibold text-ink-dim">{compact(total)}</b>
+        Party DMG <b className="num text-[13px] font-extrabold text-ink">{compact(total)}</b>
       </span>
       <span title="Śmierci drużyny w tym dungeonie (liczone od wejścia, przez wszystkich bossów)" aria-label={`Party Deaths: ${deaths}`}>
-        Party Deaths <b className={`num font-semibold ${deaths > 0 ? 'text-bad' : 'text-ink-dim'}`}>{deaths}</b>
+        Party Deaths <b className={`num text-[13px] font-extrabold ${deaths > 0 ? 'text-bad' : 'text-ink'}`}>{deaths}</b>
       </span>
     </>
   );
@@ -88,11 +88,11 @@ function FocusStrip({ focus, total, deaths }: { focus: NonNullable<OverlaySnapsh
       </div>
       <div className="mt-1 flex items-center gap-2 text-[11px] leading-none text-ink-mute">
         <span>
-          Party DPS <b className="num font-semibold text-ink-dim">{compact(focus.partyDps)}</b>
+          Party DPS <b className="num text-[13px] font-extrabold text-ink">{compact(focus.partyDps)}</b>
         </span>
         <PartyStats total={total} deaths={deaths} />
-        <span className="num ml-auto text-good" title="Przewidywany czas do zabicia przy obecnym DPS drużyny">
-          TTK <b className="font-semibold">{ttkText(focus.ttkSec)}</b>
+        <span className="num ml-auto" title="Przewidywany czas do zabicia przy obecnym DPS drużyny">
+          TTK <b className="text-[13px] font-extrabold text-good">{ttkText(focus.ttkSec)}</b>
         </span>
       </div>
       {focus.stagger && (

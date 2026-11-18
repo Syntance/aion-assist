@@ -1,6 +1,6 @@
 {
   "name": "aion-assist",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "Pasywna nakładka (DPS meter, PvP, target info) dla AION 2 — tylko nasłuch pakietów (Npcap) i standardowe API okien Windows.",
   "license": "GPL-3.0-or-later",
   "private": true,
