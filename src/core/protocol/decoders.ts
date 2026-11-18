@@ -295,20 +295,36 @@ const POOL_BASIC = 0x04;
 const POOL_CHARGED = 0x08;
 
 /**
- * Finds the Odyle entry `<pool u8> 01 87 93 03 <value varint>` in a ticket packet. The id is a specific four-byte
- * value, so a plain search is safe; the pool byte before it says which balance the value is.
+ * Finds the Odyle entry `<pools u8> 01 87 93 03 <value varint>...` in a ticket packet. The id is a specific four-byte
+ * value, so a plain search is safe. The byte before it is a bit mask of the balances that follow, in this order:
+ * 0x04 = basic, 0x08 = charged (bonus), so 0x0c carries both (basic first). Seen live 2026-11-18: `0c 01 87 93 03 0f a9 03` = 15 + 425.
  */
 function decodeOdyle(p: Uint8Array, snapshot: boolean): GameEvent | null {
   let basic: number | null = null;
   let charged: number | null = null;
   for (let i = 1; i + 4 < p.length; i++) {
     if (p[i] !== ODYLE_ID[0] || p[i + 1] !== ODYLE_ID[1] || p[i + 2] !== ODYLE_ID[2] || p[i + 3] !== ODYLE_ID[3]) continue;
-    const pool = p[i - 1];
-    if (pool !== POOL_BASIC && pool !== POOL_CHARGED) continue;
-    const v = readVarInt(p, i + 4);
-    if (v.size < 0 || v.value > 100_000) continue;
-    if (pool === POOL_BASIC) basic = v.value;
-    else charged = v.value;
+    const pools = p[i - 1];
+    if ((pools & (POOL_BASIC | POOL_CHARGED)) === 0 || (pools & ~(POOL_BASIC | POOL_CHARGED)) !== 0) continue;
+    let at = i + 4;
+    let b: number | null = null;
+    let c: number | null = null;
+    let ok = true;
+    for (const pool of [POOL_BASIC, POOL_CHARGED]) {
+      if ((pools & pool) === 0) continue;
+      const v = readVarInt(p, at);
+      if (v.size < 0 || v.value > 100_000) {
+        ok = false;
+        break;
+      }
+      at += v.size;
+      if (pool === POOL_BASIC) b = v.value;
+      else c = v.value;
+    }
+    if (!ok) continue;
+    // the login list carries the whole balance: a pool missing from its mask is empty (an update only names what changed)
+    basic = b ?? (snapshot ? 0 : basic);
+    charged = c ?? (snapshot ? 0 : charged);
   }
   if (basic === null && charged === null) return snapshot ? { t: 'odyle', snapshot, basic: null, charged: null } : null;
   return { t: 'odyle', snapshot, basic, charged };
