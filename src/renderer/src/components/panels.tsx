@@ -166,6 +166,20 @@ function PingBadge({ ping }: { ping: OverlaySnapshot['ping'] }) {
   );
 }
 
+/** The local time (HH:MM) at the right end of the footer, so you can see the hour without leaving the game. */
+function ClockBadge() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 10_000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <time className="num ml-auto shrink-0 font-semibold text-ink-dim" dateTime={now.toISOString()} title={now.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}>
+      {now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+    </time>
+  );
+}
+
 /** The game's FPS (from Windows event tracing of its frames), beside the ping. */
 function FpsBadge({ fps }: { fps: OverlaySnapshot['fps'] }) {
   const v = fps.value;
@@ -384,6 +398,7 @@ export function MeterPanel({
         )}
         {snap.settings.showPing && <PingBadge ping={snap.ping} />}
         {snap.settings.showFps && <FpsBadge fps={snap.fps} />}
+        {snap.settings.showClock && <ClockBadge />}
       </footer>
     </Panel>
   );

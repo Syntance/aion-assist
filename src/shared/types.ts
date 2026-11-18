@@ -130,11 +130,14 @@ export const settingsSchema = z.object({
   showPing: z.boolean().default(false),
   /** Show the game's FPS beside the ping (Windows event tracing of the game's frames; passive). */
   showFps: z.boolean().default(true),
+  /** The current time at the right end of the DPS window's footer. */
+  showClock: z.boolean().default(true),
   /** Global shortcuts (work while the game is in front). pin = toolbar pin (everything stays visible), edit = move windows. */
   hotkeys: z
     .object({
       pin: z.string().refine(isValidAccelerator, 'invalid shortcut'),
       edit: z.string().refine(isValidAccelerator, 'invalid shortcut'),
+      hideAll: z.string().refine(isValidAccelerator, 'invalid shortcut').default(DEFAULT_HOTKEYS.hideAll),
     })
     .default(DEFAULT_HOTKEYS),
   /** One global shortcut per window that pins / unpins just that window (missing = no shortcut). */
@@ -185,6 +188,7 @@ export const DEFAULT_SETTINGS: Settings = {
   rawCapture: false,
   showPing: false,
   showFps: true,
+  showClock: true,
   hotkeys: DEFAULT_HOTKEYS,
   panelHotkeys: {},
   toolbar: { x: 1100, y: 24 },

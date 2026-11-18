@@ -123,6 +123,26 @@ function main(): void {
     else if (fpsMeter.state !== 'off') fpsMeter.stop();
   };
   syncFps();
+  // Frame tracing sometimes fails to come up right after an update or a crash (a leftover session, the old process still
+  // closing). A failed start (not a missing permission) is simply tried again, so no restart of the app is needed.
+  let fpsRetries = 0;
+  let lastFpsState = fpsMeter.state;
+  setInterval(() => {
+    if (fpsMeter.state !== lastFpsState) {
+      lastFpsState = fpsMeter.state;
+      log.info(`fps: ${fpsMeter.state}${fpsMeter.lastCode ? ` (code ${fpsMeter.lastCode})` : ''}`);
+    }
+    if (demoMode || shotPath !== null || !settings().showFps) return;
+    if (fpsMeter.state === 'running') {
+      fpsRetries = 0;
+      return;
+    }
+    if (fpsMeter.state === 'error' && fpsRetries < 30) {
+      fpsRetries++;
+      fpsMeter.stop();
+      fpsMeter.start();
+    }
+  }, 8_000);
   const catalog = new NpcCatalog(app.getPath('userData'), NPC_SEED);
   /** A name you typed wins over the catalog's. */
   const npcName = (code: number): string | null => names.get().npcs[String(code)] ?? catalog.npc(code)?.name ?? null;
@@ -452,16 +472,23 @@ function main(): void {
     engine.manualKda(rawName, action.data, Date.now());
     push();
   });
-  ipcMain.on(IPC.setOverlayMode, (_e, mode: unknown) => {
-    const parsed = overlayModeSchema.safeParse(mode);
-    if (!parsed.success) return;
-    overlayMode = parsed.data;
+  function applyOverlayMode(mode: OverlayMode): void {
+    overlayMode = mode;
     if (overlayMode === 'show' && win && !win.isDestroyed()) {
       win.showInactive();
       win.moveTop();
     }
     poll();
     push();
+    refreshTray();
+  }
+  /** Hides every overlay window (or brings them back to the automatic behavior). */
+  function toggleHideAll(): void {
+    applyOverlayMode(overlayMode === 'hide' ? 'auto' : 'hide');
+  }
+  ipcMain.on(IPC.setOverlayMode, (_e, mode: unknown) => {
+    const parsed = overlayModeSchema.safeParse(mode);
+    if (parsed.success) applyOverlayMode(parsed.data);
   });
 
   // --- tray -----------------------------------------------------------------------
@@ -486,6 +513,7 @@ function main(): void {
         { type: 'separator' },
         { label: `Tryb edycji (${acceleratorLabel(settings().hotkeys.edit)})`, type: 'checkbox', checked: editMode, click: () => setEditMode(!editMode) },
         { label: `Zawsze widoczna (${acceleratorLabel(settings().hotkeys.pin)})`, type: 'checkbox', checked: pinned, click: () => setPinned(!pinned) },
+        { label: `Ukryj wszystkie okna (${acceleratorLabel(settings().hotkeys.hideAll)})`, type: 'checkbox', checked: overlayMode === 'hide', click: () => toggleHideAll() },
         { type: 'separator' },
         { label: 'Wyzeruj licznik DPS', click: () => engine.resetMeter() },
         { label: 'Wyzeruj sesję PvP', click: () => engine.resetPvp() },
@@ -504,9 +532,9 @@ function main(): void {
   let activeHotkeys: string[] = [];
   let registeredHotkeys = '';
   function registerHotkeys(): void {
-    const { pin, edit } = settings().hotkeys;
+    const { pin, edit, hideAll } = settings().hotkeys;
     const panelKeys = Object.entries(settings().panelHotkeys).filter((e): e is [PanelId, string] => typeof e[1] === 'string');
-    const wanted = `${pin}|${edit}|${panelKeys.map(([id, key]) => `${id}=${key}`).join(',')}`;
+    const wanted = `${pin}|${edit}|${hideAll}|${panelKeys.map(([id, key]) => `${id}=${key}`).join(',')}`;
     if (wanted === registeredHotkeys) return;
     registeredHotkeys = wanted;
     for (const accelerator of activeHotkeys) globalShortcut.unregister(accelerator);
@@ -518,6 +546,7 @@ function main(): void {
     };
     bind('edit', edit, () => setEditMode(!editMode));
     bind('pin', pin, () => setPinned(!pinned));
+    bind('hideAll', hideAll, () => toggleHideAll());
     for (const [id, accelerator] of panelKeys) {
       bind(`panel:${id}`, accelerator, () => {
         const layout = settings().panels[id];

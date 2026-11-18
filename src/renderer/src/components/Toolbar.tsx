@@ -1,4 +1,5 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { acceleratorLabel } from '@shared/keys';
 import { PANEL_IDS, type OverlaySnapshot, type PanelId } from '@shared/types';
 
 /**
@@ -11,12 +12,13 @@ const PANEL_META: Record<PanelId, { label: string; icon: string }> = {
   pvp: { label: 'PvP', icon: 'M3 3l8 8M13 3L5 11M3.5 12.5l1.5-1.5M12.5 12.5L11 11M2.5 9.5l4 4M13.5 9.5l-4 4' },
   target: { label: 'Cel', icon: 'M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M8 4.5a3.5 3.5 0 1 0 0.01 0Z' },
   daily: { label: 'Dzisiaj', icon: 'M2.5 4h11v9.5h-11ZM2.5 7h11M5.5 2.5v3M10.5 2.5v3' },
-  pets: { label: 'Zwierzaki', icon: 'M4.500 4.500C4.500 3.300 6 2.500 8 2.500s3.500.8 3.500 2V9c0 2.500-1.500 4.500-3.500 4.500S4.500 11.500 4.500 9ZM4.500 4L2.500 6.500 3 10l1.500-1M11.500 4l2 2.500L13 10l-1.500-1M6.800 6.800h.01M9.200 6.800h.01M7 10l1 .800 1-.800' },
+  pets: { label: 'Zwierzaki', icon: 'M2.500 4.500L4.500 7H9.500L10.800 4.200 13 3.500l1 1.800-.7 1H12L11.200 8.200V13.500H9.800V10H6.200V13.500H4.800V8.500L4.500 7M12 4.800h.01' },
 };
 
 const ICON_MOVE = 'M8 1.5v13M1.5 8h13M8 1.5L6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2';
 const ICON_RESET = 'M13 8a5 5 0 1 1-1.5-3.6M13 2.5v3h-3';
-const ICON_PIN = 'M6 2h4l-.8 4 2.8 2.8H4L6.8 6ZM8 8.8V14';
+const ICON_HIDE = 'M1.5 8S4 3.500 8 3.500 14.500 8 14.500 8 12 12.500 8 12.500 1.500 8 1.500 8ZM3 13L13 3';
+const ICON_PIN ='M6 2h4l-.8 4 2.8 2.8H4L6.8 6ZM8 8.8V14';
 
 function Icon({ d }: { d: string }) {
   return (
@@ -151,6 +153,9 @@ export function Toolbar({
       </ToolButton>
       <ToolButton label={pinned ? 'Odepnij (auto-ukrywanie)' : 'Przypnij (zawsze widoczna)'} active={pinned} onClick={() => api.setPinned(!pinned)}>
         <Icon d={ICON_PIN} />
+      </ToolButton>
+      <ToolButton label={`Ukryj wszystkie okna (${acceleratorLabel(settings.hotkeys.hideAll)} przywraca)`} onClick={() => api.setOverlayMode('hide')}>
+        <Icon d={ICON_HIDE} />
       </ToolButton>
       <ToolButton
         label="Wyzeruj DPS i PvP"

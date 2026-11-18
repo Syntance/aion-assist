@@ -10,7 +10,7 @@ export const HOTKEY_KEYS: readonly string[] = [
   ...Array.from({ length: 12 }, (_, i) => `F${i + 1}`),
 ];
 
-export const DEFAULT_HOTKEYS = { pin: 'Control+Shift+K', edit: 'Control+Shift+L' };
+export const DEFAULT_HOTKEYS = { pin: 'Control+Shift+K', edit: 'Control+Shift+L', hideAll: 'Control+Shift+H' };
 
 export function isValidAccelerator(value: string): boolean {
   const parts = value.split('+');

@@ -13,6 +13,7 @@ export type FpsState = 'off' | 'running' | 'denied' | 'error';
 const SESSION = 'AionAssistFps';
 const PROPS_SIZE = 120;
 const ERROR_ACCESS_DENIED = 5;
+const ERROR_ALREADY_EXISTS = 183;
 const EVENT_TRACE_CONTROL_STOP = 1;
 const PRESENT_START = 42; // Microsoft-Windows-DXGI: Present::Start
 
@@ -85,6 +86,10 @@ function properties(): Buffer {
 
 export class FpsMeter {
   state: FpsState = 'off';
+  /** The Windows result code of the last failed start / filter call (0 = none), for the log. */
+  lastCode = 0;
+  /** The name of the running session: an orphan of an earlier run (a crash or an update) must not block a new one. */
+  private name = SESSION;
   private readonly counter = new FpsCounter();
   private session: bigint | null = null;
   private trace: bigint | null = null;
@@ -106,10 +111,18 @@ export class FpsMeter {
   start(): void {
     if (this.session !== null) return;
     try {
+      this.name = SESSION;
+      this.lastCode = 0;
       ControlTraceW(0n, SESSION, properties(), EVENT_TRACE_CONTROL_STOP); // a leftover session of an earlier run
       const out: bigint[] = [0n];
-      const rc = StartTraceW(out, SESSION, properties());
+      let rc = StartTraceW(out, this.name, properties());
+      if (rc === ERROR_ALREADY_EXISTS) {
+        // the leftover session could not be stopped (another token owns it): start one under a name of our own
+        this.name = `${SESSION}_${process.pid}`;
+        rc = StartTraceW(out, this.name, properties());
+      }
       if (rc !== 0) {
+        this.lastCode = rc;
         this.state = rc === ERROR_ACCESS_DENIED ? 'denied' : 'error';
         return;
       }
@@ -125,7 +138,7 @@ export class FpsMeter {
       }, koffi.pointer(EventRecordCb));
       const logfile = {
         LogFileName: null,
-        LoggerName: SESSION,
+        LoggerName: this.name,
         CurrentTime: 0,
         BuffersRead: 0,
         ProcessTraceMode: 0x100 | 0x10000000, // real time | event record
@@ -189,6 +202,9 @@ export class FpsMeter {
       FilterDescCount: 1,
     };
     const rc = EnableTraceEx2(this.session, DXGI_PROVIDER, 1, 4, 0xffffffffffffffffn, 0n, 0, params);
-    if (rc !== 0) this.state = rc === ERROR_ACCESS_DENIED ? 'denied' : 'error';
+    if (rc !== 0) {
+      this.lastCode = rc;
+      this.state = rc === ERROR_ACCESS_DENIED ? 'denied' : 'error';
+    }
   }
 }

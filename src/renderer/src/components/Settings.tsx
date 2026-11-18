@@ -166,6 +166,9 @@ function Look({ snap }: { snap: OverlaySnapshot }) {
             <Switch label={`Pokaż okno ${PANEL_LABEL[id]}`} checked={settings.panels[id].visible} onChange={(v) => api.updatePanel({ id, layout: { visible: v } })} />
           </Row>
         ))}
+        <Row title="Godzina w oknie DPS" hint="Pokazuje aktualną godzinę (czas lokalny) w prawym dolnym rogu okna DPS.">
+          <Switch label="Godzina w oknie DPS" checked={settings.showClock} onChange={(v) => api.updateSettings({ showClock: v })} />
+        </Row>
         <Row title="Ping w oknie DPS" hint="Pokazuje na dole okna realne opóźnienie w grze: czas sieci do serwera (zmierzony) plus to, o ile później od normy nadchodzą sygnały serwera. Przy zdrowym połączeniu jest bliski zwykłemu pingowi, a przy laguje i zacięciach rośnie do setek ms. W podpowiedzi są składowe. Pomiar jest bierny, nic nie jest wysyłane.">
           <Switch label="Ping w oknie DPS" checked={settings.showPing} onChange={(v) => api.updateSettings({ showPing: v })} />
         </Row>
@@ -217,7 +220,7 @@ const Kbd = ({ children }: { children: ReactNode }) => (
 const MODIFIER_LABEL: Record<string, string> = { Control: 'Ctrl', Alt: 'Alt', Shift: 'Shift' };
 
 /** One global shortcut: modifier toggles plus a key. Works while the game is in front. */
-function HotkeyRow({ id, title, hint, snap }: { id: 'pin' | 'edit'; title: string; hint: string; snap: OverlaySnapshot }) {
+function HotkeyRow({ id, title, hint, snap }: { id: 'pin' | 'edit' | 'hideAll'; title: string; hint: string; snap: OverlaySnapshot }) {
   const current = snap.settings.hotkeys[id];
   const { modifiers, key } = splitAccelerator(current);
   const conflict = snap.hotkeyConflicts.includes(id);
@@ -349,6 +352,7 @@ function Hotkeys({ snap }: { snap: OverlaySnapshot }) {
           snap={snap}
         />
         <HotkeyRow id="edit" title="Przesuwanie okien" hint="Włącza i wyłącza tryb przesuwania okien (to samo robi przycisk ze strzałkami na pasku)." snap={snap} />
+        <HotkeyRow id="hideAll" title="Ukryj wszystkie okna" hint="Chowa całą nakładkę (okna i pasek); ten sam skrót ją przywraca. Działa też z menu ikony w zasobniku systemowym i z przycisku oka na pasku." snap={snap} />
       </Section>
       <Section title="Przypięcie pojedynczych okien">
         {PANEL_IDS.filter((id) => id !== 'pvp').map((id) => (
@@ -617,7 +621,7 @@ function Diagnostics({ snap }: { snap: OverlaySnapshot }) {
   );
 }
 
-function About({ hotkeys, snap }: { hotkeys: { pin: string; edit: string }; snap: OverlaySnapshot }) {
+function About({ hotkeys, snap }: { hotkeys: { pin: string; edit: string; hideAll: string }; snap: OverlaySnapshot }) {
   const keys: [string, string][] = [
     [acceleratorLabel(hotkeys.edit), 'Przesuwanie okien (to samo robi przycisk na pasku)'],
     [acceleratorLabel(hotkeys.pin), 'Przypięcie: wszystkie okna widoczne mimo kursora'],
