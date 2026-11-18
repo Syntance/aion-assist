@@ -437,7 +437,7 @@ function RecordBadge({ record }: { record: RivalRecord | null }) {
   const assists = record?.assists ?? 0;
   if (!record || record.wins + record.losses + assists === 0) return null;
   return (
-    <span className="num rounded-[3px] bg-panel-head/80 px-1 text-[10px] font-semibold" title="Twój bilans z tym graczem ze wszystkich zapisanych walk: zabójstwa – zgony – asysty">
+    <span className="num shrink-0 whitespace-nowrap rounded-[3px] bg-panel-head/80 px-1 text-[10px] font-semibold" title="Twój bilans z tym graczem ze wszystkich zapisanych walk: zabójstwa – zgony – asysty">
       <span className="text-good">{record.wins}</span>
       <span className="text-ink-mute">–</span>
       <span className="text-bad">{record.losses}</span>
@@ -540,7 +540,7 @@ function HpDuelRow({ row, onSelect, show }: { row: PvpRow; onSelect: () => void;
       <span className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(90deg, oklch(0 0 0 / 0.5), oklch(0 0 0 / 0.28) 30%, oklch(0 0 0 / 0) 75%)' }} aria-hidden="true" />
       <span className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(to bottom, oklch(1 0 0 / 0.14), oklch(1 0 0 / 0) 45%), linear-gradient(to top, oklch(0 0 0 / 0.24), oklch(0 0 0 / 0) 55%)' }} aria-hidden="true" />
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: `var(--color-cls-${cls})` }} aria-hidden="true" />
-      <span className="relative flex w-[38%] min-w-0 shrink-0 items-center gap-2">
+      <span className="relative flex w-[38%] min-w-[140px] shrink-0 items-center gap-2">
         <ClassIcon className={row.card.className} size={26} />
         <span className="flex min-w-0 flex-col">
           <span className="flex items-center gap-1.5">

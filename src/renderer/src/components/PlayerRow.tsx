@@ -36,7 +36,7 @@ export function GearLine({ card }: { card: PlayerCard }) {
       <>— GS</>
     );
   return (
-    <span className="num flex gap-2 text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-dim [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95),0_0_3px_oklch(0.08_0.02_255/0.8)]">
+    <span className="num flex gap-2 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.04em] text-ink-dim [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95),0_0_3px_oklch(0.08_0.02_255/0.8)]">
       <span>{gear}</span>
       <span>
         <b className="font-bold text-ink">{compact(card.combatPower)}</b> CP
