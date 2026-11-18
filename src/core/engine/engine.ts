@@ -439,20 +439,23 @@ export class Engine {
     return this.odyleNow;
   }
 
-  /** Hand-entered correction against one player: +1 kill, +1 death, or undo the last manual entry of that kind. */
+  /** Hand-entered correction against one player: +1 kill, +1 death, +1 assist, or undo the last manual entry of that kind. */
   manualKda(name: string, action: KdaAction, now: number): void {
     const me = this.selfName ?? SELF_FALLBACK_NAME;
     if (action === 'undo') {
       const log = (this.opts.store.killLog ??= []);
       for (let i = log.length - 1; i >= 0; i--) {
         const k = log[i];
-        if (!k || !k.manual || (k.kind === 'kill' ? k.victim : k.killer) !== name) continue;
+        if (!k || !k.manual || (k.kind === 'death' ? k.killer : k.victim) !== name) continue;
         log.splice(i, 1);
         const day = this.opts.store.daily[dayKey(k.at)];
         const rival = this.opts.store.rivals[name];
         if (k.kind === 'kill') {
           if (day) day.kills = Math.max(0, day.kills - 1);
           if (rival) rival.wins = Math.max(0, rival.wins - 1);
+        } else if (k.kind === 'assist') {
+          if (day) day.assists = Math.max(0, day.assists - 1);
+          if (rival) rival.assists = Math.max(0, (rival.assists ?? 0) - 1);
         } else {
           if (day) day.deaths = Math.max(0, day.deaths - 1);
           if (rival) rival.losses = Math.max(0, rival.losses - 1);
@@ -467,6 +470,10 @@ export class Engine {
       this.day(now).kills++;
       rival.wins++;
       this.logKill({ at: now, kind: 'kill', killer: me, victim: name, skill: null, manual: true });
+    } else if (action === 'assist') {
+      this.day(now).assists++;
+      rival.assists = (rival.assists ?? 0) + 1;
+      this.logKill({ at: now, kind: 'assist', killer: me, victim: name, skill: null, manual: true });
     } else {
       this.day(now).deaths++;
       rival.losses++;

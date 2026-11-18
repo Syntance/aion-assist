@@ -1,6 +1,6 @@
-/** Three tiny buttons to fix K/D by hand against one player: I killed them, they killed me, undo the last manual entry. */
+/** Tiny buttons to fix K/D/A by hand against one player: I killed them, they killed me, I assisted, undo the last manual entry. */
 export function KdaButtons({ name, onChanged }: { name: string; onChanged?: () => void }) {
-  const send = (action: 'kill' | 'death' | 'undo') => {
+  const send = (action: 'kill' | 'death' | 'assist' | 'undo') => {
     window.overlay.adjustKda(name, action);
     if (onChanged) setTimeout(onChanged, 250);
   };
@@ -12,6 +12,9 @@ export function KdaButtons({ name, onChanged }: { name: string; onChanged?: () =
       </button>
       <button type="button" className={`${base} text-bad`} title={`Zginąłem od: ${name}`} aria-label={`Dodaj zgon od: ${name}`} onClick={() => send('death')}>
         +D
+      </button>
+      <button type="button" className={`${base} text-ink`} title={`Asysta przy: ${name}`} aria-label={`Dodaj asystę: ${name}`} onClick={() => send('assist')}>
+        +A
       </button>
       <button type="button" className={`${base} text-ink-dim`} title="Cofnij ostatni ręczny wpis" aria-label={`Cofnij ostatni ręczny wpis: ${name}`} onClick={() => send('undo')}>
         ↶

@@ -472,8 +472,8 @@ export interface DeathSnapshot {
   candidates: string[];
 }
 
-export type KdaAction = 'kill' | 'death' | 'undo';
-export const kdaActionSchema = z.enum(['kill', 'death', 'undo']);
+export type KdaAction = 'kill' | 'death' | 'assist' | 'undo';
+export const kdaActionSchema = z.enum(['kill', 'death', 'assist', 'undo']);
 
 export interface PvpSnapshot {
   /** Today's kills, deaths and assists with names, newest first. */
