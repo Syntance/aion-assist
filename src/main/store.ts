@@ -72,6 +72,7 @@ const fileSchema = z.object({
   daily: z.record(z.string(), dailySchema).catch({}),
   killLog: z.array(killSchema).catch([]),
   odyle: z.record(z.string(), z.object({ basic: z.number(), charged: z.number(), at: z.number() })).catch({}),
+  maxHp: z.record(z.string(), z.number()).catch({}),
 });
 
 export interface AppData extends EngineStore {
@@ -92,7 +93,7 @@ export class Store {
   }
 
   private read(): AppData {
-    const fresh = (): AppData => ({ settings: structuredClone(DEFAULT_SETTINGS), rivals: {}, daily: {}, killLog: [], odyle: {} });
+    const fresh = (): AppData => ({ settings: structuredClone(DEFAULT_SETTINGS), rivals: {}, daily: {}, killLog: [], odyle: {}, maxHp: {} });
     if (!this.persist || !existsSync(this.file)) return fresh();
     try {
       const data = fileSchema.parse(JSON.parse(readFileSync(this.file, 'utf8')));

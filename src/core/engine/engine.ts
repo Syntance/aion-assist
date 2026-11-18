@@ -62,6 +62,8 @@ export interface EngineStore {
   killLog?: KillEntry[];
   /** Last known Odyle energy per character (the game only sends it at login and when it changes). */
   odyle?: Record<string, { basic: number; charged: number; at: number }>;
+  /** Last max HP the game reported per character (it arrives rarely, so PvP percentages need it remembered). */
+  maxHp?: Record<string, number>;
 }
 
 const KILL_LOG_MAX = 400;
@@ -416,6 +418,8 @@ export class Engine {
     return { at: d.at, killer: d.killer, killerCard: d.killer ? this.card(d.killer) : null, registered: d.registered, candidates };
   }
 
+  /** Your max HP: the last one the game reported (kept across zones and restarts), never lowered by a partial HP frame. */
+  private selfMaxHp = 0;
   private odyleNow: { basic: number; charged: number; at: number } | null = null;
 
   private restoreOdyle(name: string): void {
@@ -535,6 +539,7 @@ export class Engine {
         if (ev.name) {
           this.selfName = ev.name;
           this.restoreOdyle(ev.name);
+          this.selfMaxHp = Math.max(this.selfMaxHp, this.opts.store.maxHp?.[ev.name] ?? 0);
           const profile = this.profile(ev.name);
           profile.server = ev.server ?? profile.server;
           profile.className = classFromCode(ev.classCode) ?? profile.className;
@@ -700,6 +705,11 @@ export class Engine {
           this.meter.closed = true;
         }
         this.hp.set(ev.id, { cur: nextCur, max: ev.max ?? prev?.max ?? null, at: now });
+        if (ev.id === this.selfId && ev.max !== null && ev.max > 0) {
+          this.selfMaxHp = ev.max;
+          if (this.selfName) (this.opts.store.maxHp ??= {})[this.selfName] = ev.max;
+          this.dirty = true;
+        }
         // Most HP frames carry only the current value: the highest one seen stands in for the max.
         const seen = Math.max(ev.cur ?? 0, ev.max ?? 0);
         if (seen > (this.hpPeak.get(ev.id) ?? 0)) {
@@ -1085,7 +1095,7 @@ export class Engine {
         duel: withRecord ? this.duelOf(name) : null,
       }))
       // opponents: whoever took the most of your HP first
-      .sort((a, b) => (withRecord ? (b.duel?.takenPct ?? -1) - (a.duel?.takenPct ?? -1) : 0));
+      .sort((a, b) => (withRecord ? (b.duel?.takenDmg ?? -1) - (a.duel?.takenDmg ?? -1) : 0));
   }
 
   private startRun(now: number): void {
@@ -1356,13 +1366,15 @@ export class Engine {
     const d = this.duels.get(name);
     if (!d) return null;
     const foeMax = this.maxHpOf(d.id);
-    const selfMax = this.selfId !== null ? this.maxHpOf(this.selfId) : null;
+    const selfSeen = Math.max(this.selfMaxHp, this.selfId !== null ? (this.maxHpOf(this.selfId) ?? 0) : 0);
+    const selfMax = selfSeen > 0 ? selfSeen : null;
     // a foe's HP is 100%: heals can make your damage add up to more, but the share never passes 1
     const dealtPct = foeMax !== null ? Math.min(1, d.dealt / foeMax) : null;
     const cur = this.hp.get(d.id)?.cur ?? null;
     const remainingPct = d.dead ? 0 : foeMax !== null && cur !== null ? Math.min(1, cur / foeMax) : dealtPct !== null ? Math.max(0, 1 - dealtPct) : null;
-    // what they really took of your max HP: it can pass 100% when you were healed or died and came back inside the same fight
-    const takenPct = selfMax !== null ? d.taken / selfMax : null;
+    // what they took of your max HP, never shown above 100% (heals, shields, a death and a comeback, or a max HP we only
+    // know from partial frames would otherwise give numbers like 331%)
+    const takenPct = selfMax !== null ? Math.min(1, d.taken / selfMax) : null;
     return { remainingPct, dealtPct, takenPct, dead: d.dead, dealtDmg: d.dealt, takenDmg: d.taken, kills: d.kills, deaths: d.deaths, assists: d.assists };
   }
 
