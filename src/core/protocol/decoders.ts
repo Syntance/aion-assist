@@ -86,10 +86,27 @@ function decodeCast(p: Uint8Array): GameEvent | null {
 function decodeNpcSpawn(p: Uint8Array): GameEvent | null {
   const r = new Reader(p, 2);
   const id = r.varint();
-  r.skip(3); // kind, flags, gate
+  r.skip(2); // kind, flags
+  // gate 1: a name follows (a cleric's summon carries its owner's name: `01 08 "Orzelkas"`, seen live 2026-11-19)
+  if (r.u8() === 1) r.skip(r.u8());
   const code = r.u32();
   if (id < MIN_ENTITY_ID || code < 1000 || code > 0xffffff) return null;
-  return { t: 'npc', id, code };
+  return { t: 'npc', id, code, owner: summonOwner(p) };
+}
+
+const OWNER_MARK = [0x07, 0x02, 0x06];
+
+/**
+ * A summon (a chanter's or cleric's spirit and the like) names the player who summoned it: `07 02 06 <owner entity u32>`
+ * after its position block (seen live 2026-11-19; Abyss Logs credits this damage to the owner). Null for an ordinary NPC.
+ */
+function summonOwner(p: Uint8Array): number | null {
+  for (let i = 8; i + 7 <= p.length; i++) {
+    if (p[i] !== OWNER_MARK[0] || p[i + 1] !== OWNER_MARK[1] || p[i + 2] !== OWNER_MARK[2]) continue;
+    const owner = (p[i + 3] | (p[i + 4] << 8) | (p[i + 5] << 16) | (p[i + 6] << 24)) >>> 0;
+    return owner >= MIN_ENTITY_ID && owner <= 0xffffff ? owner : null;
+  }
+  return null;
 }
 
 function decodeDotTick(p: Uint8Array): GameEvent | null {

@@ -54,7 +54,8 @@ export type GameEvent =
   | { t: 'zone' }
   | { t: 'party'; members: RosterMember[]; title: string | null; leaderId: number | null; dungeonId?: number | null }
   | { t: 'cast'; actor: number; skill: number }
-  | { t: 'npc'; id: number; code: number }
+  /** `owner`: the player entity that summoned it (spirits, summons), null for an ordinary NPC. */
+  | { t: 'npc'; id: number; code: number; owner?: number | null }
   | { t: 'petSnapshot'; equipped: number; ranks: Record<number, number>; souls: Record<number, number> }
   | { t: 'petSouls'; entries: { pet: number; amount: number }[] }
   | { t: 'petSpent'; entries: { pet: number; amount: number }[] }

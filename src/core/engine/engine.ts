@@ -335,6 +335,8 @@ export class Engine {
   /** Players currently in view (entity id -> name), minus self. */
   /** Players who exchanged damage with my side this session: certainly enemies. */
   private readonly foes = new Set<string>();
+  /** Summon entity id -> the player who summoned it. */
+  private readonly summonOwners = new Map<number, number>();
   /** NPC code by entity id (from the spawn record), for naming bosses in the history. */
   private readonly npcCodes = new Map<number, number>();
   private mapId: number | null = null;
@@ -777,6 +779,10 @@ export class Engine {
         if (this.npcCodes.get(ev.id) !== ev.code) this.contextDirty = true;
         this.npcCodes.set(ev.id, ev.code);
         if (this.npcCodes.size > 800) this.npcCodes.delete(this.npcCodes.keys().next().value as number);
+        // an entity id can be reused: a spawn without an owner is no longer anyone's summon
+        if (ev.owner != null) this.summonOwners.set(ev.id, ev.owner);
+        else this.summonOwners.delete(ev.id);
+        if (this.summonOwners.size > 400) this.summonOwners.delete(this.summonOwners.keys().next().value as number);
         break;
       case 'cast': {
         // my side's casts feed the per-skill Casts column
@@ -884,7 +890,10 @@ export class Engine {
   }
 
   private onDamage(ev: Extract<GameEvent, { t: 'damage' }>, now: number): void {
-    const { actor: actorId, target: targetId, amount, crit } = ev;
+    const { target: targetId, amount, crit } = ev;
+    // a summon's hits count for the player who summoned it (as in the game's own and Abyss Logs' meters)
+    const owner = this.summonOwners.get(ev.actor);
+    const actorId = owner !== undefined && this.playerName(owner) !== null ? owner : ev.actor;
     const info: HitInfo = { skill: ev.skill, targetId, back: ev.back, front: ev.front, parry: ev.parry, perfect: ev.perfect, double: ev.double };
     // Until the local player is known, "my side" is unknown: counting would present
     // strangers' damage as ours (seen live when the app started after the world was loaded).
