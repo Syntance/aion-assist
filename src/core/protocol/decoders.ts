@@ -87,7 +87,7 @@ function decodeNpcSpawn(p: Uint8Array): GameEvent | null {
   const r = new Reader(p, 2);
   const id = r.varint();
   r.skip(2); // kind, flags
-  // gate 1: a name follows (a cleric's summon carries its owner's name: `01 08 "Orzelkas"`, seen live 2026-11-19)
+  // gate 1: a name follows (some skill-made entities carry their owner's name: `01 08 "Orzelkas"`, seen live 2026-11-19)
   if (r.u8() === 1) r.skip(r.u8());
   const code = r.u32();
   if (id < MIN_ENTITY_ID || code < 1000 || code > 0xffffff) return null;
@@ -97,7 +97,7 @@ function decodeNpcSpawn(p: Uint8Array): GameEvent | null {
 const OWNER_MARK = [0x07, 0x02, 0x06];
 
 /**
- * A summon (a chanter's or cleric's spirit and the like) names the player who summoned it: `07 02 06 <owner entity u32>`
+ * An entity created by a player's skill (seen from sorcerers and a cleric; damage it deals is theirs) names its owner: `07 02 06 <owner entity u32>`
  * after its position block (seen live 2026-11-19; Abyss Logs credits this damage to the owner). Null for an ordinary NPC.
  */
 function summonOwner(p: Uint8Array): number | null {

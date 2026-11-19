@@ -5,7 +5,7 @@ import { DEFAULT_OPCODES } from '../src/core/protocol/opcodes';
 
 const decoder = new PacketDecoder(DEFAULT_OPCODES);
 const hex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, 'hex'));
-// real spawn records (Abyss Logs session, 2026-11-19): a chanter's spirit owned by Kaamq (entity 5416), and a cleric's
+// real spawn records (Abyss Logs session, 2026-11-19): an entity made by sorcerer Kaamq's skill (owner 5416), and one
 // summon that also carries its owner's name before the NPC code, owned by Orzelkas (entity 12072)
 const CHANTER_SPIRIT =
   '413687f0015f0000cf902c004002efecadc64af299460082c54721edc542604601ea9b01ea9b01ff120000ff120000000000000000000000000000503a020064000000f04902000100000000000000a08601000000000090230b00010101110181969800ffffffffffffffff8075d52abb03000087f0010102efecadc64af299460082c54707020628150000a20100000000260508556e69766572736501000200000000000000000000000000000003cd0091100000d000c4010000d600320000002d00000000';

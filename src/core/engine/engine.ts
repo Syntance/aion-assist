@@ -171,6 +171,8 @@ class Fight {
   last: number;
   /** The boss went back to full HP (a wipe / reset): this attempt is over, the next hit starts a new fight. */
   closed = false;
+  /** Monsters of this fight that went down with a non-final death record (flag 1). */
+  readonly down = new Set<number>();
   constructor(readonly start: number) {
     this.last = start;
   }
@@ -657,6 +659,7 @@ export class Engine {
           this.deadIds.add(ev.id);
           if (this.deadIds.size > 500) this.deadIds.delete(this.deadIds.values().next().value as number);
         }
+        this.closeIfCleared(ev.id, ev.flag);
         if (ev.flag === 3 && ev.id === this.selfId && now - this.lastDeathLoggedAt > DEATH_FALLBACK_MS) {
           // the foe who hit me last (within the kill window), if any: this is a PvP death
           let killer: string | null = null;
@@ -912,6 +915,10 @@ export class Engine {
     }
     const target = this.playerName(targetId);
 
+    // a boss fight ends with the killing blow: hits that land after the boss's HP already read 0 (projectiles in flight,
+    // summons, damage over time) are not counted, as in Abyss Logs. Ordinary monsters keep them (Abyss counts those too).
+    if (!target && this.hp.get(targetId)?.cur === 0 && this.isBossEntity(targetId, this.hpPeak.get(targetId) ?? 0)) return;
+
     if (!target) {
       const include = this.selfId === null || this.isMySide(actor, actorId);
       if (!include) return;
@@ -1165,6 +1172,20 @@ export class Engine {
     if (now - (this.lastDeathAt.get(id) ?? -Infinity) < 5000) return;
     this.lastDeathAt.set(id, now);
     this.runDeaths.set(name, (this.runDeaths.get(name) ?? 0) + 1);
+  }
+
+  /**
+   * A pull is over once every monster hit in it is dead: the next hit starts a new fight, as in Abyss Logs (a group of
+   * mobs killed a second before the next pull is not merged into it). Flag 3 is a final death; flag 1 also ends a
+   * monster (seen live) but not a boss, where it can be a phase.
+   */
+  private closeIfCleared(id: number, flag: number): void {
+    const fight = this.meter;
+    if (!fight || fight.closed || !fight.targets.has(id)) return;
+    if (flag === 1 && !this.isBossEntity(id, this.hpPeak.get(id) ?? 0)) fight.down.add(id);
+    else if (flag !== 3) return;
+    for (const target of fight.targets.keys()) if (!this.deadIds.has(target) && !fight.down.has(target)) return;
+    fight.closed = true;
   }
 
   /** The boss a fight is held open for: its top target while that target is a living, big-HP NPC. */
