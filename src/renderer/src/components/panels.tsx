@@ -553,10 +553,10 @@ function HpDuelRow({ row, onSelect, show }: { row: PvpRow; onSelect: () => void;
         <span className="relative my-1 flex-1 self-stretch overflow-hidden rounded-[4px]">
           <span className="bar-fill absolute inset-0" style={{ transform: `scaleX(${left})`, transformOrigin: 'left center', background: seg('var(--color-bad)') }} aria-hidden="true" />
           <span className="bar-fill absolute inset-0" style={{ transform: `scaleX(${1 - left})`, transformOrigin: 'right center', background: seg('var(--color-good)') }} aria-hidden="true" />
-          {/* what they dealt rides the end of the red bar; what you dealt sits at the right edge */}
+          {/* what they dealt rides the end of the red bar but never reaches the number at the right edge (what you dealt) */}
           <span
             className="num pointer-events-none absolute inset-y-0 flex items-center pr-1.5 text-[12px] font-bold text-ink transition-[left] duration-[260ms] [text-shadow:0_1px_2px_oklch(0.08_0.02_255/0.95)]"
-            style={{ left: `max(${left * 100}%, 42px)`, transform: 'translateX(-100%)' }}
+            style={{ left: unknown ? `max(${left * 100}%, 42px)` : `max(42px, min(${left * 100}%, calc(100% - 62px)))`, transform: 'translateX(-100%)' }}
             title={unknown ? 'Obrażenia z nieznanego źródła na tobie' : 'Obrażenia, które on zadał tobie'}
           >
             {compact(theirs)}
