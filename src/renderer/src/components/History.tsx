@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { EncounterRecord, EncounterSummary, HistoryData, KillEntry, NameKind, RunSummary } from '@shared/types';
 import { dayKey } from '@shared/day';
+import { dpsSeconds } from '@shared/dps';
 import { groupByOpponent, UNKNOWN_RIVAL, type FightResult, type OpponentGroup } from '@shared/opponents';
 import { clock, compact, grouped, percent } from '../format';
 import { ClassIcon } from './ClassIcon';
@@ -66,7 +67,8 @@ export function PlayersWindow({
       return { ...n, [kind]: next };
     });
   };
-  const seconds = rec ? Math.max(1, rec.durationMs / 1000) : 1;
+  // what the party dealt per second: the sum of its players' own DPS (each from his first to his last hit)
+  const partyDps = rec ? rec.rows.reduce((sum, r) => sum + r.damage / dpsSeconds(rec.durationMs, r.joinedMs, r.lastMs), 0) : 0;
   const dict = names ?? { skills: {}, npcs: {}, maps: {}, dungeons: {} };
   const groups: { title: string | null; tone: string; rows: EncounterRecord['rows']; total: number }[] = !rec
     ? []
@@ -108,7 +110,7 @@ export function PlayersWindow({
           <p className="num m-0 px-3 pt-2 text-[11px] text-ink-mute">
             {rec.kind === 'pvp'
               ? `${compact(rec.total)} vs ${compact(rec.theirsTotal ?? 0)} · ${rec.rows.length} gr.`
-              : `${compact(rec.total)} łącznie · ${compact(rec.total / seconds)}/s · ${rec.rows.length} gr.`}
+              : `${compact(rec.total)} łącznie · ${compact(partyDps)}/s · ${rec.rows.length} gr.`}
           </p>
           {groups.map((g) => (
           <div key={g.title ?? 'all'}>
@@ -135,7 +137,7 @@ export function PlayersWindow({
                     </span>
                   </span>
                   <span className="num flex flex-col items-end">
-                    <span className="text-[14px] font-bold">{compact(row.damage / seconds)}/s</span>
+                    <span className="text-[14px] font-bold">{compact(row.damage / dpsSeconds(rec.durationMs, row.joinedMs, row.lastMs))}/s</span>
                     <span className="text-[10px] text-ink-dim">
                       {percent(g.total > 0 ? row.damage / g.total : 0)} · {compact(row.damage)}
                     </span>

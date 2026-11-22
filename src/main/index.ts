@@ -97,6 +97,7 @@ function main(): void {
     store: petFile.data,
     rowLimit: () => settings().petsRows,
     hideMaxed: () => settings().petsHideMaxed,
+    sortMax: () => settings().petsSortMax,
   });
   /** Copies the collection from the standalone PetTracker app for the current character; returns how many pets were taken. */
   const importPetTracker = (): number => {

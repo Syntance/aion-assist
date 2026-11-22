@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PetRow } from '@shared/pets';
+import { compareToMax, soulsToMax, type PetRow } from '@shared/pets';
 import { FAMILIES, FamilyChip, PetPortrait } from './PetIcon';
 import { loadSpawns, petsWithMap } from './PetMap';
 import { PendingMark, PinButton, progressText, RankPips } from './PetsPanel';
 
 type RankFilter = 'all' | 'none' | '1' | '2' | '3' | 'open' | 'unknown';
-type Sort = 'name' | 'close';
+type Sort = 'max' | 'close' | 'name';
 
 const RANK_LABEL: Record<RankFilter, string> = {
   all: 'Wszystkie rangi',
@@ -50,7 +50,7 @@ export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState('');
   const [rank, setRank] = useState<RankFilter>('open');
-  const [sort, setSort] = useState<Sort>('name');
+  const [sort, setSort] = useState<Sort>('max');
   const [openId, setOpenId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -70,9 +70,11 @@ export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap
       (p) => (family === '' || p.family === family) && matchesRank(p, rank) && (q === '' || p.name.toLowerCase().includes(q) || (p.source ?? '').toLowerCase().includes(q)),
     );
     return list.sort((a, b) =>
-      sort === 'close'
-        ? (a.remaining ?? 9999) - (b.remaining ?? 9999) || a.name.localeCompare(b.name)
-        : a.name.localeCompare(b.name),
+      sort === 'max'
+        ? compareToMax(a, b) || a.name.localeCompare(b.name)
+        : sort === 'close'
+          ? (a.remaining ?? 9999) - (b.remaining ?? 9999) || a.name.localeCompare(b.name)
+          : a.name.localeCompare(b.name),
     );
   }, [pets, query, family, rank, sort]);
 
@@ -132,8 +134,9 @@ export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap
             ))}
           </select>
           <select aria-label="Sortowanie" value={sort} onChange={(e) => setSort(e.target.value as Sort)} className={select}>
-            <option value="name">Sortuj: wg nazwy</option>
+            <option value="max">Sortuj: najbliżej MAX</option>
             <option value="close">Sortuj: najbliżej awansu</option>
+            <option value="name">Sortuj: wg nazwy</option>
           </select>
         </div>
       </div>
@@ -146,6 +149,7 @@ export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap
           <ul className="m-0 flex list-none flex-col gap-1 p-2.5">
             {shown.map((p) => {
               const prog = progressText(p);
+              const toMax = soulsToMax(p.rank, p.souls);
               const open = openId === p.id;
               return (
                 <li key={p.id} className="rounded-[8px] bg-row ring-1 ring-line/60">
@@ -167,7 +171,9 @@ export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap
                       {/* fixed columns, so rank, amount, map and pin line up in every row */}
                       <span className="flex w-[64px] shrink-0 flex-col items-end gap-1">
                         <RankPips rank={p.rank} />
-                        <span className="num whitespace-nowrap text-[10px] text-ink-mute">{p.remaining !== null && p.remaining > 0 ? `brakuje ${p.remaining}` : ''}</span>
+                        <span className="num whitespace-nowrap text-[10px] text-ink-mute" title={p.remaining !== null && p.remaining > 0 ? `Do następnej rangi brakuje ${p.remaining}` : undefined}>
+                          {sort === 'max' ? (toMax !== null && toMax > 0 ? `do MAX ${toMax}` : '') : p.remaining !== null && p.remaining > 0 ? `brakuje ${p.remaining}` : ''}
+                        </span>
                       </span>
                       <span className="flex w-[76px] shrink-0 flex-col items-end gap-1">
                         <span className="flex items-center gap-1">

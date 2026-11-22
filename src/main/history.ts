@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import { dayKey } from '@shared/day';
+import { dpsSeconds } from '@shared/dps';
 import { UNKNOWN_SOURCE } from '@shared/opponents';
 import type { EncounterRecord, EncounterSummary, HistoryData, NameKind, NamesData, RunSummary } from '@shared/types';
 
@@ -143,7 +144,6 @@ export class HistoryStore {
 
   private summarize(rec: EncounterRecord): EncounterSummary {
     const top = rec.rows[0];
-    const seconds = Math.max(1, rec.durationMs / 1000);
     return {
       id: rec.id,
       startedAt: rec.startedAt,
@@ -152,7 +152,7 @@ export class HistoryStore {
       npcCode: rec.npcCode,
       npcMaxHp: rec.npcMaxHp,
       players: rec.rows.length,
-      top: top ? { name: top.name, dps: top.damage / seconds } : null,
+      top: top ? { name: top.name, dps: top.damage / dpsSeconds(rec.durationMs, top.joinedMs, top.lastMs) } : null,
       ...(rec.kind === 'pvp'
         ? { theirsTotal: rec.theirsTotal ?? 0, opponents: rec.rows.filter((r) => r.side === 'theirs' && r.name !== UNKNOWN_SOURCE).map((r) => r.name) }
         : {}),

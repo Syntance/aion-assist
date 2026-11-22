@@ -1,5 +1,6 @@
 import type { GameEvent } from '../protocol/events';
 import type { PetRow, PetsSnapshot } from '@shared/pets';
+import { compareToMax, stageGoal } from '../../shared/pets';
 import { NPC_PETS, PET_ROWS, PET_SOURCES } from './petData';
 
 /**
@@ -7,9 +8,6 @@ import { NPC_PETS, PET_ROWS, PET_SOURCES } from './petData';
  * passive capture as everything else), recent soul gains and the pet mobs currently in view.
  * Packet layouts and the soul bookkeeping follow the open-source PetTracker (GPL-3.0, 0Fox2Give).
  */
-
-/** Souls needed in the stage you are in: unlock 5, rank 1 -> 2: 25, rank 2 -> 3: 75. */
-export const stageGoal = (rank: number): number | null => (rank === 0 ? 5 : rank === 1 ? 25 : rank === 2 ? 75 : null);
 
 export const NEARBY_STALE_MS = 90_000;
 const RECENT_MAX = 50;
@@ -48,6 +46,8 @@ export interface PetBookOptions {
   /** Pet rows the HUD shows at most (pins count). */
   rowLimit?: () => number;
   hideMaxed?: () => boolean;
+  /** List the pets closest to MAX first (pins included) instead of the newest first. */
+  sortMax?: () => boolean;
 }
 
 export class PetBook {
@@ -323,18 +323,26 @@ export class PetBook {
         ? [...near].sort((a, b) => b[1] - a[1]).map(([id, at]) => ({ id, at }))
         : this.recent.map((r) => ({ id: r.pet, at: r.at }));
     const ids = new Set<number>();
+    const pinned: PetRow[] = [];
     const rows: PetRow[] = [];
     for (const id of this.pins) {
       const m = META.get(id);
       if (!m || m.paid) continue;
       ids.add(id);
-      rows.push(this.row(id, near.get(id) ?? this.recent.find((r) => r.pet === id)?.at ?? null));
+      pinned.push(this.row(id, near.get(id) ?? this.recent.find((r) => r.pet === id)?.at ?? null));
     }
     for (const b of base) {
       if (ids.has(b.id) || !visible(b.id)) continue;
       ids.add(b.id);
       rows.push(this.row(b.id, b.at));
     }
+    // closest to MAX first: sorted before the list is trimmed to the row limit, so the pets nearest to MAX of everything in view show up
+    // (the sort is stable, so equal pets keep the newest first)
+    if (this.opts.sortMax?.() ?? false) {
+      pinned.sort(compareToMax);
+      rows.sort(compareToMax);
+    }
+    rows.unshift(...pinned);
     let collected = 0;
     let maxed = 0;
     let unknown = 0;

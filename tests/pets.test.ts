@@ -7,6 +7,7 @@ import { PetBook, emptyPetStore } from '../src/core/pets/petBook';
 import { NPC_PETS } from '../src/core/pets/petData';
 import { PacketDecoder } from '../src/core/protocol/decoders';
 import { mergeOpcodes } from '../src/core/protocol/opcodes';
+import { compareToMax, soulsToMax } from '../src/shared/pets';
 
 const decoder = new PacketDecoder(mergeOpcodes(null));
 const T0 = 1_800_000_000_000;
@@ -134,5 +135,48 @@ describe('PetTracker import', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('closest to MAX', () => {
+  it('counts the souls missing for MAX over the stage you are in and every stage after it', () => {
+    expect(soulsToMax(1, 10)).toBe(90); // 15 left of 25, then 75
+    expect(soulsToMax(2, 70)).toBe(5);
+    expect(soulsToMax(2, 75)).toBe(0); // a rank-up waiting for its confirmation
+    expect(soulsToMax(0, 2)).toBe(103); // 3 to unlock, then 25 and 75
+    expect(soulsToMax(3, null)).toBe(0);
+    expect(soulsToMax(null, null)).toBeNull();
+    expect(soulsToMax(1, null)).toBeNull();
+  });
+
+  it('orders the pets still to be maxed first, unknown ones next and the maxed ones last', () => {
+    const rows = [
+      { id: 'maxed', rank: 3, souls: null },
+      { id: 'unknown', rank: 1, souls: null },
+      { id: 'far', rank: 1, souls: 3 },
+      { id: 'near', rank: 2, souls: 70 },
+      { id: 'mid', rank: 2, souls: 10 },
+    ];
+    expect([...rows].sort(compareToMax).map((r) => r.id)).toEqual(['near', 'mid', 'far', 'unknown', 'maxed']);
+  });
+
+  it('lists the pets closest to MAX first before trimming to the row limit, pins first', () => {
+    const make = (sortMax: boolean, rowLimit: number): PetBook => {
+      const b = new PetBook({ store: emptyPetStore(), rowLimit: () => rowLimit, hideMaxed: () => false, sortMax: () => sortMax });
+      b.apply({ t: 'self', id: 1, name: 'SilentDeath', server: 1318, classCode: 18, level: 45 }, T0);
+      feed(b, snapshotPacket(0, [[1002, 1], [1003, 2], [1005, 2]], [[1002, 10], [1003, 70], [1005, 10]]));
+      // newest last: the reward order is 1003, then 1005, then 1002
+      feed(b, batchPacket(0x0d, [[1003, 1]]), T0 + 10);
+      feed(b, batchPacket(0x0d, [[1005, 1]]), T0 + 20);
+      feed(b, batchPacket(0x0d, [[1002, 1]]), T0 + 30);
+      return b;
+    };
+    const ids = (b: PetBook, limit = 5): number[] => b.snapshot(T0 + 40, 'recent').rows.slice(0, limit).map((r) => r.id);
+    expect(ids(make(false, 5))).toEqual([1002, 1005, 1003]); // newest first
+    expect(ids(make(true, 5))).toEqual([1003, 1005, 1002]); // closest to MAX first (4, 64, 89 missing)
+    expect(ids(make(true, 2))).toEqual([1003, 1005]); // the trim keeps the closest, not the newest
+    const pinned = make(true, 2);
+    pinned.togglePin(1002);
+    expect(ids(pinned)).toEqual([1002, 1003]); // a pin stays on top
   });
 });

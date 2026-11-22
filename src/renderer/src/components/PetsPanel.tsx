@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { PetRow, PetsSnapshot } from '@shared/pets';
+import { soulsToMax, type PetRow, type PetsSnapshot } from '@shared/pets';
 import type { OverlaySnapshot } from '@shared/types';
 import { Panel } from './Panel';
 import { FamilyChip, PetPortrait } from './PetIcon';
@@ -61,6 +61,7 @@ function age(at: number | null, now: number): string {
 
 function PetLine({ pet, mode, hasMap, reserveMap, onMap }: { pet: PetRow; mode: 'recent' | 'nearby'; hasMap: boolean; reserveMap: boolean; onMap: (pet: { id: number; name: string }) => void }) {
   const prog = progressText(pet);
+  const toMax = soulsToMax(pet.rank, pet.souls);
   const fill = pet.rank === 3 ? 1 : pet.souls !== null && pet.goal ? Math.min(1, pet.souls / pet.goal) : 0;
   const max = pet.rank === 3;
   return (
@@ -73,6 +74,11 @@ function PetLine({ pet, mode, hasMap, reserveMap, onMap }: { pet: PetRow; mode: 
         <span className="num flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10px] text-ink-mute">
           <span title="Ranga peta" className="shrink-0">Rank {pet.rank === null ? '?' : pet.rank}</span>
           <FamilyChip family={pet.family} />
+          {toMax !== null && toMax > 0 && (
+            <span className="text-ink-dim" title="Dusz brakujących do maksymalnej rangi (reszta tego etapu i kolejne)">
+              do MAX {toMax}
+            </span>
+          )}
           {pet.sessionSouls > 0 && <span className="text-good" title="Dusze zebrane w tej sesji">+{pet.sessionSouls}</span>}
           {mode === 'nearby' && <span>{age(pet.seenAt, Date.now())}</span>}
         </span>
@@ -139,13 +145,13 @@ export function PetsPanel({ snap, onFinder, onMap }: { snap: OverlaySnapshot; on
       role="tab"
       aria-selected={mode === id}
       onClick={() => api.updateSettings({ petsMode: id })}
-      className={`rounded-[5px] px-2 py-0.5 text-[11px] font-semibold ${mode === id ? 'bg-accent/25 text-accent' : 'text-ink-dim hover:text-ink'}`}
+      className={`whitespace-nowrap rounded-[5px] px-2 py-0.5 text-[11px] font-semibold ${mode === id ? 'bg-accent/25 text-accent' : 'text-ink-dim hover:text-ink'}`}
     >
       {label}
       {id === 'nearby' && pets.nearbyCount > 0 && <span className="num ml-1 text-[10px] font-normal text-ink-mute">{pets.nearbyCount}</span>}
     </button>
   );
-  const iconButton = 'grid h-[22px] place-items-center rounded-[5px] px-1.5 text-[11px] font-semibold text-ink-dim ring-1 ring-line hover:bg-line hover:text-ink';
+  const iconButton = 'grid h-[22px] shrink-0 place-items-center whitespace-nowrap rounded-[5px] px-1.5 text-[11px] font-semibold text-ink-dim ring-1 ring-line hover:bg-line hover:text-ink';
   return (
     <Panel
       id="pets"
@@ -165,17 +171,29 @@ export function PetsPanel({ snap, onFinder, onMap }: { snap: OverlaySnapshot; on
       }
       aside={pets.summary.total > 0 && pets.synced ? <span className="num" title="Zebrane / wszystkie (bez petów tylko za prawdziwe pieniądze)">{pets.summary.collected}/{pets.summary.total}</span> : null}
     >
-      <div className="flex items-center gap-1.5 px-2 pt-1.5">
-        <div role="tablist" aria-label="Lista petów" className="flex gap-0.5 rounded-[7px] bg-row p-0.5">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-2 pt-1.5">
+        <div role="tablist" aria-label="Lista petów" className="flex shrink-0 gap-0.5 rounded-[7px] bg-row p-0.5">
           {tab('recent', 'Ostatnie')}
           {tab('nearby', 'W pobliżu')}
         </div>
         <button
           type="button"
+          aria-pressed={settings.petsSortMax}
+          aria-label="Sortuj: najbliżej MAX na górze"
+          title={settings.petsSortMax ? 'Najbliżej maksymalnej rangi na górze (kliknij: najnowsze na górze)' : 'Najnowsze na górze (kliknij: najbliżej maksymalnej rangi na górze)'}
+          onClick={() => api.updateSettings({ petsSortMax: !settings.petsSortMax })}
+          className={`${iconButton} ml-auto w-[24px] px-0 ${settings.petsSortMax ? 'bg-accent/20 text-accent' : ''}`}
+        >
+          <svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3.500 2.500v9M1.200 9.200l2.300 2.300 2.300-2.300M8 3h4.500M8 6.200h3.200M8 9.400h1.900" />
+          </svg>
+        </button>
+        <button
+          type="button"
           aria-pressed={settings.petsHideMaxed}
           title="Ukrywa pety na maksymalnej randze"
           onClick={() => api.updateSettings({ petsHideMaxed: !settings.petsHideMaxed })}
-          className={`${iconButton} ml-auto ${settings.petsHideMaxed ? 'bg-accent/20 text-accent' : ''}`}
+          className={`${iconButton} ${settings.petsHideMaxed ? 'bg-accent/20 text-accent' : ''}`}
         >
           Ukryj MAX
         </button>

@@ -111,6 +111,8 @@ export const settingsSchema = z.object({
   petsMode: z.enum(['recent', 'nearby']).default('recent'),
   petsRows: z.number().int().min(1).max(8).default(5),
   petsHideMaxed: z.boolean().default(true),
+  /** List the pets closest to the MAX rank first (otherwise the newest first). */
+  petsSortMax: z.boolean().default(true),
   /** Look for a newer version on GitHub in the background and download it. */
   autoUpdate: z.boolean().default(true),
   /** Detailed log lines (event counts, timings) in app.log. */
@@ -178,6 +180,7 @@ export const DEFAULT_SETTINGS: Settings = {
   petsMode: 'recent',
   petsRows: 5,
   petsHideMaxed: true,
+  petsSortMax: true,
   autoUpdate: true,
   debugLog: false,
   maxPlayerRows: 10,
@@ -237,6 +240,10 @@ export interface EncounterRow {
   name: string;
   /** PvP fights only: which side the player was on. */
   side?: 'mine' | 'theirs';
+  /** Ms after the fight started that this player first dealt damage: his DPS counts from there (absent in older saves = from the start). */
+  joinedMs?: number;
+  /** Ms after the fight started that this player last dealt damage: his DPS of a finished fight ends there (absent in older saves = the end of the fight). */
+  lastMs?: number;
   className: ClassName | null;
   level: number | null;
   gearScore: number | null;

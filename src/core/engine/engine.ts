@@ -1,5 +1,6 @@
 import { UNKNOWN_SOURCE } from '@shared/opponents';
 import { dayKey } from '@shared/day';
+import { dpsSeconds } from '@shared/dps';
 import type { GameEvent } from '../protocol/events';
 import {
   classFromCode,
@@ -137,6 +138,10 @@ interface SkillTally {
 }
 
 class PlayerTally {
+  /** When this player first dealt damage in the fight: his DPS counts from here, not from the first hit of anyone. */
+  first: number | null = null;
+  /** ... and when he last did: the end of his DPS window once the fight is over. */
+  last: number | null = null;
   damage = 0;
   hits = 0;
   crits = 0;
@@ -185,8 +190,18 @@ class Fight {
   touch(name: string): void {
     this.tally(name);
   }
+  /** Ms after the fight started that this player first dealt damage (0 when he was there from the start or has not hit yet). */
+  joinedMs(t: PlayerTally): number {
+    return t.first === null ? 0 : Math.max(0, t.first - this.start);
+  }
+  /** Ms after the fight started that this player last dealt damage (the fight's own end when he has not hit yet). */
+  leftMs(t: PlayerTally): number {
+    return t.last === null ? this.last - this.start : Math.max(0, t.last - this.start);
+  }
   add(name: string, amount: number, crit: boolean, now: number, info: HitInfo = {}): void {
     const t = this.tally(name);
+    if (t.first === null) t.first = now;
+    t.last = now;
     t.damage += amount;
     t.hits += 1;
     if (crit) t.crits += 1;
@@ -224,8 +239,9 @@ class Fight {
 }
 
 /** Turns one saved/live player row into the numbers shown in the detail window. */
-export function buildDetail(row: EncounterRow, durationMs: number, title: string): PlayerDetail {
-  const seconds = Math.max(1, durationMs / 1000);
+export function buildDetail(row: EncounterRow, durationMs: number, title: string, ended = true): PlayerDetail {
+  // a finished fight counts from his first to his last hit; a live one up to now
+  const seconds = dpsSeconds(durationMs, row.joinedMs, ended ? row.lastMs : undefined);
   const frac = (n: number): number => (row.hits > 0 ? n / row.hits : 0);
   return {
     name: row.name,
@@ -1135,7 +1151,7 @@ export class Engine {
     return name === (this.selfName ?? SELF_FALLBACK_NAME) && this.selfId !== null;
   }
 
-  private rows(fight: Fight, seconds: number, withRecord: boolean): PvpRow[] {
+  private rows(fight: Fight, durationMs: number, withRecord: boolean, ended: boolean): PvpRow[] {
     const total = fight.total();
     return [...fight.rows.entries()]
       .sort((a, b) => b[1].damage - a[1].damage)
@@ -1143,7 +1159,7 @@ export class Engine {
         card: this.card(name),
         isSelf: this.isSelfName(name),
         damage: tally.damage,
-        dps: tally.damage / seconds,
+        dps: tally.damage / dpsSeconds(durationMs, fight.joinedMs(tally), ended ? fight.leftMs(tally) : undefined),
         share: total > 0 ? tally.damage / total : 0,
         record: withRecord ? (this.opts.store.rivals[name] ?? null) : null,
         duel: withRecord ? this.duelOf(name) : null,
@@ -1325,6 +1341,8 @@ export class Engine {
           gearScore: card.gearScore,
           combatPower: card.combatPower,
           isSelf: this.isSelfName(name),
+          joinedMs: fight.joinedMs(t),
+          lastMs: fight.leftMs(t),
           damage: t.damage,
           hits: t.hits,
           crits: t.crits,
@@ -1349,7 +1367,7 @@ export class Engine {
     const active = now - last <= this.pvpIdleMs();
     const durationMs = Math.max(1000, (active ? now : last) - mine.start);
     const row = [...this.encounterRows(mine, 'mine'), ...this.encounterRows(theirs, 'theirs')].find((r) => r.name === name);
-    return row ? buildDetail(row, durationMs, 'PvP') : null;
+    return row ? buildDetail(row, durationMs, 'PvP', !active) : null;
   }
 
   liveDetail(name: string, now: number): PlayerDetail | null {
@@ -1358,7 +1376,7 @@ export class Engine {
     const active = now - fight.last <= this.idleLimit(fight);
     const durationMs = Math.max(1000, (active ? now : fight.last) - fight.start);
     const row = this.encounterRows(fight).find((r) => r.name === name);
-    return row ? buildDetail(row, durationMs, 'Obecna walka') : null;
+    return row ? buildDetail(row, durationMs, 'Obecna walka', !active) : null;
   }
 
   private pruneHp(now: number): void {
@@ -1398,7 +1416,6 @@ export class Engine {
     if (!fight) return { active: false, durationMs: 0, total: 0, rows: [], focus: this.focusSnapshot(now, 0), deaths: this.deathsTotal() };
     const active = now - fight.last <= this.idleLimit(fight);
     const durationMs = Math.max(1000, (active ? now : fight.last) - fight.start);
-    const seconds = durationMs / 1000;
     const total = fight.total();
     const rows = [...fight.rows.entries()]
       .sort((a, b) => b[1].damage - a[1].damage)
@@ -1406,13 +1423,17 @@ export class Engine {
         card: this.card(name),
         isSelf: this.isSelfName(name),
         damage: tally.damage,
-        dps: tally.damage / seconds,
+        // his own window: from his first hit (a late joiner is not divided by time he was not hitting), up to now while the fight is on
+        // and up to his last hit once it is over (somebody who died early is not divided by the time after)
+        dps: tally.damage / dpsSeconds(durationMs, fight.joinedMs(tally), active ? undefined : fight.leftMs(tally)),
         share: total > 0 ? tally.damage / total : 0,
         critRate: tally.hits > 0 ? tally.crits / tally.hits : 0,
         deaths: this.runDeaths.get(name) ?? 0,
       }));
-    const groupDps = active ? total / seconds : 0;
-    return { active, durationMs, total, rows, focus: this.focusSnapshot(now, groupDps, total / seconds), deaths: this.deathsTotal() };
+    // what the party deals is what its players deal: the sum of their own DPS (not the total over the whole fight, which a late joiner dilutes)
+    const partyDps = rows.reduce((sum, r) => sum + r.dps, 0);
+    const groupDps = active ? partyDps : 0;
+    return { active, durationMs, total, rows, focus: this.focusSnapshot(now, groupDps, partyDps), deaths: this.deathsTotal() };
   }
 
   /** Highest HP seen for an entity: its max, when the game sent one. */
@@ -1470,13 +1491,12 @@ export class Engine {
     const last = Math.max(mine.last, theirs.last);
     const active = now - last <= this.pvpIdleMs();
     const durationMs = Math.max(1000, (active ? now : last) - mine.start);
-    const seconds = durationMs / 1000;
     return {
       ...base,
       active,
       durationMs,
-      mine: this.rows(mine, seconds, false),
-      theirs: this.rows(theirs, seconds, true),
+      mine: this.rows(mine, durationMs, false, !active),
+      theirs: this.rows(theirs, durationMs, true, !active),
       mineTotal: mine.total(),
       theirsTotal: theirs.total(),
     };

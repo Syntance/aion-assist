@@ -444,6 +444,9 @@ function Behavior({ snap }: { snap: OverlaySnapshot }) {
         <Row title="Ukryj pety na MAX" hint="Pety z maksymalną rangą znikają z listy ostatnich i bliskich.">
           <Switch label="Ukryj pety na MAX" checked={settings.petsHideMaxed} onChange={(v) => api.updateSettings({ petsHideMaxed: v })} />
         </Row>
+        <Row title="Najbliżej MAX na górze" hint="Listy ostatnich i bliskich petów zaczynają się od tych, którym brakuje najmniej dusz do maksymalnej rangi (reszta etapu i kolejne etapy). Wyłączone: najnowsze na górze. Przypięte pety zostają na górze. Wyszukiwarka i mapa mają własne sortowanie.">
+          <Switch label="Najbliżej MAX na górze" checked={settings.petsSortMax} onChange={(v) => api.updateSettings({ petsSortMax: v })} />
+        </Row>
       </Section>
       <Section title="Liczniki">
         <Row title="Maks. graczy na liście" hint="Ile graczy pokazuje okno DPS/PvP naraz na każdej liście (po stronie twojej i przeciwników). Przy masowym PvP zostają ci z największymi obrażeniami, a ty zawsze jesteś na liście. Sumy i paski liczą wszystkich graczy.">

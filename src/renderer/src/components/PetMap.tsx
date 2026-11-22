@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WHOLE_MAP, fitPoints, nearestPoint, panBy, span, toScreen, zoomAt, type MapPoint, type MapView } from '@shared/mapView';
-import type { PetRow } from '@shared/pets';
+import { compareToMax, soulsToMax, toMaxKey, type PetRow } from '@shared/pets';
 import type { SpawnRegion } from '../data/petMaps';
-import { FAMILIES, FamilyChip, familyColor } from './PetIcon';
+import { FAMILIES, FamilyChip, PetPortrait, familyColor } from './PetIcon';
 
 /**
  * Spawn map of pets on every map the game has pets on (the four world maps and the Abyss maps), drawn on the game's own world map
@@ -72,6 +72,9 @@ interface Dot {
   pet: number;
   color: string;
 }
+
+/** How many pets the "closest to MAX" list of a map shows. */
+const CLOSEST_LIST = 60;
 
 const STORE_KEY = 'aion-assist.petmap';
 interface Saved {
@@ -158,7 +161,8 @@ export function PetMapWindow({
   }, []);
   const byId = useMemo(() => new Map(allPets.map((p) => [p.id, p])), [allPets]);
   const mapIds = useMemo(() => (data ? petsWithMap(data) : new Set<number>()), [data]);
-  const choices = useMemo(() => allPets.filter((p) => mapIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name)), [allPets, mapIds]);
+  /** Pets that have a spawn on a map, the ones closest to MAX first (the picker lists them by family in this order). */
+  const choices = useMemo(() => allPets.filter((p) => mapIds.has(p.id)).sort((a, b) => compareToMax(a, b) || a.name.localeCompare(b.name)), [allPets, mapIds]);
 
   /** Does this pet's spawn get a dot: the one chosen pet, or any pet of a shown family (not MAX when those are hidden). */
   const wanted = useCallback(
@@ -173,10 +177,27 @@ export function PetMapWindow({
   const regions = useMemo(() => (data ? data.regions : []), [data]);
   const countIn = useCallback((r: { points: readonly (readonly number[])[] }): number => r.points.filter((p) => wanted(p[0])).length, [wanted]);
   const region = regions.find((r) => r.key === regionKey) ?? regions.slice().sort((a, b) => countIn(b) - countIn(a))[0] ?? null;
-  const dots = useMemo<Dot[]>(
-    () => (region ? region.points.filter((p) => wanted(p[0])).map((p) => ({ pet: p[0], npc: p[1], x: p[2], y: p[3], color: familyColor(byId.get(p[0])?.family ?? '') })) : []),
-    [region, wanted, byId],
-  );
+  // drawn from the farthest from MAX to the closest, so where dots overlap the pets nearest to MAX end up on top
+  const dots = useMemo<Dot[]>(() => {
+    if (!region) return [];
+    const key = (id: number): number => {
+      const p = byId.get(id);
+      return p ? toMaxKey(p) : 3_000_000;
+    };
+    return region.points
+      .filter((p) => wanted(p[0]))
+      .map((p) => ({ pet: p[0], npc: p[1], x: p[2], y: p[3], color: familyColor(byId.get(p[0])?.family ?? '') }))
+      .sort((a, b) => key(b.pet) - key(a.pet));
+  }, [region, wanted, byId]);
+  /** The pets with spawns on this map that the filters leave in, closest to MAX first (independent of the one chosen pet, so you can switch). */
+  const closest = useMemo<PetRow[]>(() => {
+    if (!region) return [];
+    const ids = new Set(region.points.map((p) => p[0]));
+    return [...ids]
+      .map((id) => byId.get(id))
+      .filter((p): p is PetRow => p !== undefined && families.has(p.family) && !(saved.onlyOpen && p.rank === 3))
+      .sort((a, b) => compareToMax(a, b) || a.name.localeCompare(b.name));
+  }, [region, byId, families, saved.onlyOpen]);
   /** Dots per family over all maps, for the legend (MAX pets left out when hidden). */
   const perFamily = useMemo(() => {
     const out: Record<string, number> = {};
@@ -339,11 +360,15 @@ export function PetMapWindow({
             const list = choices.filter((c) => c.family === f);
             return list.length === 0 ? null : (
               <optgroup key={f} label={f}>
-                {list.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {list.map((c) => {
+                  const toMax = soulsToMax(c.rank, c.souls);
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.rank === 3 ? ' · MAX' : toMax !== null ? ` · do MAX ${toMax}` : ''}
+                    </option>
+                  );
+                })}
               </optgroup>
             );
           })}
@@ -406,36 +431,71 @@ export function PetMapWindow({
           </>
         )}
       </div>
-      <div className="flex h-[460px]">
-        <nav aria-label="Mapy" className="flex w-[216px] shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-panel-head/45 p-2">
-          {GROUPS.map((g) => {
-            const list = regions.filter((r) => r.group === g.id);
-            if (list.length === 0) return null;
-            return (
-              <div key={g.id} className="flex flex-col gap-0.5">
-                <h3 className="m-0 px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-[0.09em] text-ink-mute">{g.label}</h3>
-                {list.map((r) => {
-                  const n = countIn(r);
-                  const active = region?.key === r.key;
+      <div className="flex h-[520px]">
+        <aside className="flex w-[216px] shrink-0 flex-col border-r border-line bg-panel-head/45">
+          <nav aria-label="Mapy" className="flex shrink-0 flex-col gap-2 p-2">
+            {GROUPS.map((g) => {
+              const list = regions.filter((r) => r.group === g.id);
+              if (list.length === 0) return null;
+              return (
+                <div key={g.id} className="flex flex-col gap-0.5">
+                  <h3 className="m-0 px-2 pb-1 pt-1 text-[10px] font-bold uppercase tracking-[0.09em] text-ink-mute">{g.label}</h3>
+                  {list.map((r) => {
+                    const n = countIn(r);
+                    const active = region?.key === r.key;
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        aria-current={active ? 'true' : undefined}
+                        onClick={() => setRegionKey(r.key)}
+                        className={`flex items-center gap-2 rounded-[8px] px-2 py-[7px] text-left text-[11.5px] font-semibold transition-colors ${active ? 'bg-accent/15 text-accent ring-1 ring-accent/40' : 'text-ink-dim hover:bg-row hover:text-ink'}`}
+                      >
+                        <span className="min-w-0 flex-1 truncate" title={r.name}>
+                          {r.name}
+                        </span>
+                        <span className={`num shrink-0 rounded-full px-1.5 text-[10px] font-semibold ${active ? 'bg-accent/20 text-accent' : 'bg-line/60 text-ink-mute'} ${n === 0 ? 'opacity-50' : ''}`}>{n}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </nav>
+          <section aria-label="Najbliżej MAX na tej mapie" className="flex min-h-0 flex-1 flex-col border-t border-line">
+            <h3 className="m-0 flex items-baseline justify-between px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.09em] text-ink-mute">
+              <span title="Pety z tej mapy, którym brakuje najmniej dusz do maksymalnej rangi (reszta etapu i kolejne etapy)">Najbliżej MAX</span>
+              <span className="num font-semibold normal-case tracking-normal">dusz</span>
+            </h3>
+            {closest.length === 0 ? (
+              <p className="m-0 px-4 py-2 text-[11px] text-ink-mute">{allPets.length === 0 ? 'Wczytuję…' : 'Żaden pet z wybranych rodzin nie ma spawnów na tej mapie.'}</p>
+            ) : (
+              <ul className="m-0 flex min-h-0 flex-1 list-none flex-col gap-px overflow-y-auto px-2 pb-2">
+                {closest.slice(0, CLOSEST_LIST).map((p) => {
+                  const toMax = soulsToMax(p.rank, p.souls);
+                  const chosen = pet?.id === p.id;
                   return (
-                    <button
-                      key={r.key}
-                      type="button"
-                      aria-current={active ? 'true' : undefined}
-                      onClick={() => setRegionKey(r.key)}
-                      className={`flex items-center gap-2 rounded-[8px] px-2 py-[7px] text-left text-[11.5px] font-semibold transition-colors ${active ? 'bg-accent/15 text-accent ring-1 ring-accent/40' : 'text-ink-dim hover:bg-row hover:text-ink'}`}
-                    >
-                      <span className="min-w-0 flex-1 truncate" title={r.name}>
-                        {r.name}
-                      </span>
-                      <span className={`num shrink-0 rounded-full px-1.5 text-[10px] font-semibold ${active ? 'bg-accent/20 text-accent' : 'bg-line/60 text-ink-mute'} ${n === 0 ? 'opacity-50' : ''}`}>{n}</span>
-                    </button>
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        aria-pressed={chosen}
+                        title={chosen ? 'Pokaż znów wszystkie pety wybranych rodzin' : `Pokaż tylko ${p.name} na mapie`}
+                        onClick={() => onPick(chosen ? null : { id: p.id, name: p.name })}
+                        className={`flex w-full items-center gap-2 rounded-[7px] px-1.5 py-[3px] text-left transition-colors ${chosen ? 'bg-accent/15 ring-1 ring-accent/40' : 'hover:bg-row'}`}
+                      >
+                        <PetPortrait id={p.id} size={24} />
+                        <span className={`min-w-0 flex-1 truncate text-[11.5px] font-semibold ${chosen ? 'text-accent' : 'text-ink'}`}>{p.name}</span>
+                        <span className={`num shrink-0 text-[11px] font-bold ${toMax === null ? 'text-ink-mute' : toMax <= 25 ? 'text-warm' : 'text-ink-dim'}`} title={toMax === null ? 'Brak danych o duszach' : `Brakuje ${toMax} dusz do maksymalnej rangi`}>
+                          {p.rank === 3 ? 'MAX' : (toMax ?? '—')}
+                        </span>
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
-            );
-          })}
-        </nav>
+              </ul>
+            )}
+          </section>
+        </aside>
         <div ref={box} className="relative min-w-0 flex-1" style={{ background: blank || !drawable ? 'oklch(0.2 0.02 250)' : PAPER }}>
           <canvas
             ref={canvas}
@@ -511,6 +571,11 @@ export function PetMapWindow({
                   <span className="size-2 shrink-0 rounded-full" style={{ background: hoveredDot?.color }} aria-hidden="true" />
                   <span className="truncate">{hoveredPet.name}</span>
                   <span className="num ml-auto shrink-0 text-[10px] font-semibold text-ink-dim">{progress(hoveredPet)}</span>
+                  {hoveredPet.rank !== null && hoveredPet.rank < 3 && soulsToMax(hoveredPet.rank, hoveredPet.souls) !== null && (
+                    <span className="num shrink-0 text-[10px] font-semibold text-warm" title="Dusz do maksymalnej rangi">
+                      do MAX {soulsToMax(hoveredPet.rank, hoveredPet.souls)}
+                    </span>
+                  )}
                 </span>
               ) : null}
               <span className="font-semibold text-ink-dim">{npcName}</span>
@@ -527,7 +592,7 @@ export function PetMapWindow({
         </div>
       </div>
       <footer className="border-t border-line px-3 py-1.5 text-[10px] text-ink-mute">
-        Kolor kropki to rodzina peta; najedź na kropkę, żeby zobaczyć peta, jego postęp i moba. To stałe miejsca spawnu (nie żywe moby ani twoja pozycja). Przeciągaj, żeby przesunąć, kółko myszy przybliża.
+        Kolor kropki to rodzina peta; najedź na kropkę, żeby zobaczyć peta, jego postęp i moba. Pety najbliższe MAX leżą na wierzchu, a lista po lewej zaczyna się od nich (kliknij, żeby pokazać tylko jednego). To stałe miejsca spawnu (nie żywe moby ani twoja pozycja). Przeciągaj, żeby przesunąć, kółko myszy przybliża.
       </footer>
     </section>
   );
