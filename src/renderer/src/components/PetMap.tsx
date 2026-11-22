@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WHOLE_MAP, fitPoints, nearestPoint, panBy, span, toScreen, zoomAt, type MapView } from '@shared/mapView';
+import type { PetRow } from '@shared/pets';
+import { FAMILIES, FamilyChip, familyColor } from './PetIcon';
 
 /**
- * Spawn map of a pet (Verteron and Altgard), like PetTracker's: pan with the mouse, zoom with the wheel, hover a dot for
- * the mob's name. The dots are approximate static spawn points, not live mobs and not your position.
+ * Spawn map of pets (Verteron and Altgard), like PetTracker's: pan with the mouse, zoom with the wheel, hover a dot for
+ * the mob and the pet. Dots are coloured by pet family and can be filtered by family (and hidden for pets already at
+ * MAX), or narrowed to one pet. They are approximate static spawn points, not live mobs and not your position.
  */
 
 type SpawnData = typeof import('../data/petSpawns');
@@ -27,11 +30,53 @@ interface Dot {
   x: number;
   y: number;
   npc: number;
+  pet: number;
+  color: string;
 }
 
-export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name: string } | null; onPick: (pet: { id: number; name: string }) => void; onClose: () => void }) {
-  const petId = pet?.id ?? 0;
-  const [choices, setChoices] = useState<{ id: number; name: string }[]>([]);
+const STORE_KEY = 'aion-assist.petmap';
+interface Saved {
+  families: string[];
+  onlyOpen: boolean;
+}
+function loadSaved(): Saved {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const v = JSON.parse(raw) as Partial<Saved>;
+      return {
+        families: Array.isArray(v.families) ? v.families.filter((f): f is string => typeof f === 'string') : [...FAMILIES],
+        onlyOpen: v.onlyOpen !== false,
+      };
+    }
+  } catch {
+    /* storage can be unavailable */
+  }
+  return { families: [...FAMILIES], onlyOpen: true };
+}
+
+const progress = (p: PetRow): string => (p.rank === 3 ? 'MAX' : p.souls !== null && p.goal !== null ? `${p.souls} / ${p.goal}` : '—');
+
+export function PetMapWindow({
+  pet,
+  onPick,
+  onClose,
+}: {
+  pet: { id: number; name: string } | null;
+  onPick: (pet: { id: number; name: string } | null) => void;
+  onClose: () => void;
+}) {
+  const [allPets, setAllPets] = useState<PetRow[]>([]);
+  const [saved, setSaved] = useState<Saved>(loadSaved);
+  const families = useMemo(() => new Set(saved.families), [saved.families]);
+  const update = (next: Saved): void => {
+    setSaved(next);
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    } catch {
+      /* storage can be unavailable */
+    }
+  };
   const [data, setData] = useState<SpawnData | null>(null);
   const [regionKey, setRegionKey] = useState<string | null>(null);
   const [view, setView] = useState<MapView>(WHOLE_MAP);
@@ -51,23 +96,51 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
     };
   }, []);
 
-  // the pets that have spawns on a bundled map, for the picker
+  // the collection (ranks change as souls come in), for filtering, colouring and the picker
   useEffect(() => {
-    if (!data) return;
     let alive = true;
-    const ids = petsWithMap(data);
-    void window.overlay.getPets().then((all) => {
-      if (alive) setChoices(all.filter((p) => ids.has(p.id)).map((p) => ({ id: p.id, name: p.name })).sort((a, b) => a.name.localeCompare(b.name)));
-    });
+    const load = (): void => void window.overlay.getPets().then((all) => alive && setAllPets(all));
+    load();
+    const t = setInterval(load, 5000);
     return () => {
       alive = false;
+      clearInterval(t);
     };
-  }, [data]);
+  }, []);
+  const byId = useMemo(() => new Map(allPets.map((p) => [p.id, p])), [allPets]);
+  const mapIds = useMemo(() => (data ? petsWithMap(data) : new Set<number>()), [data]);
+  const choices = useMemo(() => allPets.filter((p) => mapIds.has(p.id)).sort((a, b) => a.name.localeCompare(b.name)), [allPets, mapIds]);
 
-  // without a pet both maps are offered (no dots); with one, only the regions where it spawns
-  const regions = useMemo(() => (data ? (pet ? data.SPAWN_REGIONS.filter((r) => r.points.some((p) => p[0] === petId)) : data.SPAWN_REGIONS) : []), [data, pet, petId]);
-  const region = regions.find((r) => r.key === regionKey) ?? regions.slice().sort((a, b) => b.points.filter((p) => p[0] === petId).length - a.points.filter((p) => p[0] === petId).length)[0] ?? null;
-  const dots = useMemo<Dot[]>(() => (region ? region.points.filter((p) => p[0] === petId).map((p) => ({ npc: p[1], x: p[2], y: p[3] })) : []), [region, petId]);
+  /** Does this pet's spawn get a dot: the one chosen pet, or any pet of a shown family (not MAX when those are hidden). */
+  const wanted = useCallback(
+    (id: number): boolean => {
+      if (pet) return id === pet.id;
+      const p = byId.get(id);
+      return p !== undefined && families.has(p.family) && !(saved.onlyOpen && p.rank === 3);
+    },
+    [pet, byId, families, saved.onlyOpen],
+  );
+
+  const regions = useMemo(() => (data ? data.SPAWN_REGIONS : []), [data]);
+  const countIn = useCallback((r: { points: readonly (readonly number[])[] }): number => r.points.filter((p) => wanted(p[0])).length, [wanted]);
+  const region = regions.find((r) => r.key === regionKey) ?? regions.slice().sort((a, b) => countIn(b) - countIn(a))[0] ?? null;
+  const dots = useMemo<Dot[]>(
+    () => (region ? region.points.filter((p) => wanted(p[0])).map((p) => ({ pet: p[0], npc: p[1], x: p[2], y: p[3], color: familyColor(byId.get(p[0])?.family ?? '') })) : []),
+    [region, wanted, byId],
+  );
+  /** Dots per family over both maps, for the legend (MAX pets left out when hidden). */
+  const perFamily = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!data) return out;
+    for (const r of data.SPAWN_REGIONS) {
+      for (const p of r.points) {
+        const info = byId.get(p[0]);
+        if (!info || (saved.onlyOpen && info.rank === 3)) continue;
+        out[info.family] = (out[info.family] ?? 0) + 1;
+      }
+    }
+    return out;
+  }, [data, byId, saved.onlyOpen]);
 
   // keep the canvas sized to its box
   useEffect(() => {
@@ -79,16 +152,17 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
     return () => ro.disconnect();
   }, []);
 
-  // frame the spawns when the pet or the region changes
+  // frame the spawns when the pet, the filters or the region change
   const regionId = region?.key ?? '';
   const sized = size.w > 0;
   const sizeRef = useRef(size);
   sizeRef.current = size;
   const dotsRef = useRef(dots);
   dotsRef.current = dots;
+  const frameKey = `${pet?.id ?? 0}|${saved.families.join(',')}|${saved.onlyOpen}|${dots.length > 0}`;
   useEffect(() => {
     if (sized) setView(fitPoints(sizeRef.current.w, sizeRef.current.h, dotsRef.current));
-  }, [regionId, petId, sized]);
+  }, [regionId, frameKey, sized]);
 
   // tile images of the shown region
   const hasTiles = region ? region.tiles.some(([c, r]) => tileUrl(region.key, c, r) !== undefined) : false;
@@ -128,24 +202,42 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
       ctx.drawImage(img, at.x, at.y, tile + 0.3, tile + 0.3);
     }
     if (!hasTiles) return; // no meaningful-looking dots over a missing map
+    // a little darker under the dots so the colours stand out from the terrain
+    ctx.fillStyle = 'rgba(8,12,18,0.28)';
+    ctx.fillRect(0, 0, size.w, size.h);
+    // a bit larger when zoomed in; many dots (whole families) stay small so they do not hide the map
+    const base = dots.length > 1500 ? 2.6 : dots.length > 250 ? 3.2 : 3.8;
+    const radius = Math.min(6, base + (view.zoom - 1) * 0.35);
     dots.forEach((d, i) => {
+      if (hover?.index === i) return; // drawn last, on top
       const p = toScreen(view, size.w, size.h, d.x, d.y);
-      if (p.x < -6 || p.y < -6 || p.x > size.w + 6 || p.y > size.h + 6) return;
+      if (p.x < -8 || p.y < -8 || p.x > size.w + 8 || p.y > size.h + 8) return;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, hover?.index === i ? 5.5 : 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgb(255,215,0)';
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = d.color;
       ctx.fill();
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1.3;
+      ctx.strokeStyle = 'rgba(8,10,14,0.85)';
       ctx.stroke();
     });
+    const hot = hover ? dots[hover.index] : undefined;
+    if (hot) {
+      const p = toScreen(view, size.w, size.h, hot.x, hot.y);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius + 3, 0, Math.PI * 2);
+      ctx.fillStyle = hot.color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'white';
+      ctx.stroke();
+    }
   }, [view, size, region, dots, loaded, hover, hasTiles]);
 
   // wheel zoom (a native listener, so the page does not scroll)
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const onWheel = (e: WheelEvent) => {
+    const onWheel = (e: WheelEvent): void => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       setView((v) => zoomAt(v, size.w, size.h, e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - rect.left, e.clientY - rect.top));
@@ -158,6 +250,12 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
 
   const hoveredDot = hover ? dots[hover.index] : undefined;
   const npcName = hoveredDot && data ? (data.SPAWN_NPC_NAMES[hoveredDot.npc] ?? `NPC #${hoveredDot.npc}`) : null;
+  const hoveredPet = hoveredDot ? byId.get(hoveredDot.pet) : undefined;
+  const toggleFamily = (f: string): void => update({ ...saved, families: families.has(f) ? saved.families.filter((x) => x !== f) : [...saved.families, f] });
+  const note = 'pointer-events-none absolute left-4 top-4 m-0 max-w-[330px] rounded-[6px] bg-panel-head/90 px-3 py-2 text-[12px] text-ink-dim';
+  // tooltip stays inside the canvas: flipped below the dot near the top, pushed in from the sides
+  const tipLeft = hover ? Math.min(Math.max(hover.x, 90), Math.max(90, size.w - 90)) : 0;
+  const tipBelow = hover ? hover.y < 64 : false;
 
   return (
     <section
@@ -172,38 +270,89 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
           value={pet?.id ?? ''}
           onChange={(e) => {
             const chosen = choices.find((c) => c.id === Number(e.target.value));
-            if (chosen) onPick(chosen);
+            onPick(chosen ? { id: chosen.id, name: chosen.name } : null);
           }}
-          className="min-w-0 max-w-[220px] flex-1 rounded-[6px] border border-line bg-panel px-1.5 py-1 text-[12px] text-ink"
+          className="min-w-0 max-w-[230px] flex-1 rounded-[6px] border border-line bg-panel px-1.5 py-1 text-[12px] text-ink"
         >
-          {!pet && <option value="">Wybierz peta…</option>}
+          <option value="">Wszystkie (wg rodzin poniżej)</option>
           {pet && !choices.some((c) => c.id === pet.id) && <option value={pet.id}>{pet.name}</option>}
-          {choices.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
+          {FAMILIES.map((f) => {
+            const list = choices.filter((c) => c.family === f);
+            return list.length === 0 ? null : (
+              <optgroup key={f} label={f}>
+                {list.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
         </select>
-        {dots.length > 0 && <span className="num text-[11px] text-ink-mute">{dots.length} punktów</span>}
+        <span className="num text-[11px] text-ink-mute" title="Punkty spawnu widoczne na tej mapie">
+          {dots.length} pkt
+        </span>
         <button type="button" aria-label="Zamknij mapę" onClick={onClose} className="ml-auto grid size-6 place-items-center rounded-[5px] text-ink-dim hover:bg-row hover:text-ink">
           <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
             <path d="M3 3l10 10M13 3L3 13" />
           </svg>
         </button>
       </header>
+      <div className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-2">
+        {pet ? (
+          <>
+            <span className="flex items-center gap-1.5 rounded-[6px] bg-panel-head py-0.5 pl-2 pr-1 text-[12px] font-semibold ring-1 ring-line">
+              {byId.get(pet.id) && <FamilyChip family={byId.get(pet.id)?.family ?? ''} compact />}
+              <span className="max-w-[260px] truncate">{pet.name}</span>
+              <button type="button" aria-label="Pokaż wszystkie pety" title="Pokaż wszystkie pety wybranych rodzin" onClick={() => onPick(null)} className="grid size-5 place-items-center rounded-[4px] text-ink-dim hover:bg-line hover:text-ink">
+                <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <path d="M3 3l10 10M13 3L3 13" />
+                </svg>
+              </button>
+            </span>
+            <span className="text-[11px] text-ink-mute">tylko ten pet</span>
+          </>
+        ) : (
+          <>
+            {FAMILIES.map((f) => {
+              const on = families.has(f);
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={on}
+                  title={on ? `Ukryj rodzinę ${f}` : `Pokaż rodzinę ${f}`}
+                  onClick={() => toggleFamily(f)}
+                  className={`flex h-[24px] shrink-0 items-center gap-1.5 rounded-[6px] px-1.5 text-[12px] font-semibold ring-1 transition-colors ${on ? 'bg-panel-head text-ink ring-line' : 'bg-transparent text-ink-mute ring-line/50 hover:text-ink'}`}
+                >
+                  <span className="size-2.5 rounded-full ring-1 ring-black/50" style={{ background: on ? familyColor(f) : 'transparent', boxShadow: on ? 'none' : `inset 0 0 0 1.5px ${familyColor(f)}` }} aria-hidden="true" />
+                  {f}
+                  <span className="num text-[10px] font-normal text-ink-mute">{perFamily[f] ?? 0}</span>
+                </button>
+              );
+            })}
+            <button type="button" className="h-[24px] shrink-0 whitespace-nowrap rounded-[6px] px-1.5 text-[11px] font-semibold text-ink-dim hover:text-ink" onClick={() => update({ ...saved, families: families.size === FAMILIES.length ? [] : [...FAMILIES] })}>
+              {families.size === FAMILIES.length ? 'Żadna' : 'Wszystkie'}
+            </button>
+          </>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-3 py-2">
-        {regions.map((r) => (
-          <button
-            key={r.key}
-            type="button"
-            aria-pressed={region?.key === r.key}
-            onClick={() => setRegionKey(r.key)}
-            className={`${button} ${region?.key === r.key ? 'bg-accent/25 text-accent' : ''}`}
-          >
-            {r.name}
-            {pet && <span className="num ml-1 text-[10px] font-normal text-ink-mute">{r.points.filter((p) => p[0] === petId).length}</span>}
-          </button>
-        ))}
+        {regions.map((r) => {
+          const n = countIn(r);
+          return (
+            <button key={r.key} type="button" aria-pressed={region?.key === r.key} onClick={() => setRegionKey(r.key)} className={`${button} ${region?.key === r.key ? 'bg-accent/25 text-accent' : ''}`}>
+              {r.name}
+              <span className="num ml-1 text-[10px] font-normal text-ink-mute">{n}</span>
+            </button>
+          );
+        })}
+        {!pet && (
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-[11px] text-ink-dim" title="Ukryj pety, które masz już na maksymalnej randze">
+            <input type="checkbox" checked={saved.onlyOpen} onChange={(e) => update({ ...saved, onlyOpen: e.target.checked })} className="size-3.5 accent-[var(--color-accent)]" />
+            Bez MAX
+          </label>
+        )}
         <span className="ml-auto flex gap-1">
           <button type="button" className={button} title="Przybliż" aria-label="Przybliż" onClick={() => zoomButton(1.4)}>
             +
@@ -211,7 +360,7 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
           <button type="button" className={button} title="Oddal" aria-label="Oddal" onClick={() => zoomButton(1 / 1.4)}>
             −
           </button>
-          <button type="button" className={button} title="Pokaż wszystkie spawny tego peta" onClick={() => setView(fitPoints(size.w, size.h, dots))}>
+          <button type="button" className={button} title="Pokaż wszystkie widoczne punkty" onClick={() => setView(fitPoints(size.w, size.h, dots))}>
             Dopasuj
           </button>
           <button type="button" className={button} title="Cała mapa" onClick={() => setView(WHOLE_MAP)}>
@@ -219,7 +368,7 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
           </button>
         </span>
       </div>
-      <div ref={box} className="relative h-[420px] w-full">
+      <div ref={box} className="relative h-[440px] w-full">
         <canvas
           ref={canvas}
           className="absolute inset-0 size-full cursor-grab touch-none active:cursor-grabbing"
@@ -252,16 +401,29 @@ export function PetMapWindow({ pet, onPick, onClose }: { pet: { id: number; name
           onPointerLeave={() => setHover(null)}
         />
         {hover && npcName && (
-          <span className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-[5px] bg-panel-head px-2 py-1 text-[11px] font-semibold text-ink shadow ring-1 ring-line" style={{ left: hover.x, top: hover.y - 8 }}>
-            {npcName}
+          <span
+            className="pointer-events-none absolute z-10 flex min-w-[140px] -translate-x-1/2 flex-col gap-0.5 rounded-[7px] bg-panel-head px-2.5 py-1.5 text-[11px] shadow-[0_6px_18px_oklch(0.08_0.02_255/0.6)] ring-1 ring-line"
+            style={{ left: tipLeft, top: tipBelow ? hover.y + 14 : hover.y - 10, transform: `translate(-50%, ${tipBelow ? '0' : '-100%'})` }}
+          >
+            {hoveredPet ? (
+              <span className="flex items-center gap-1.5 font-bold text-ink">
+                <span className="size-2 shrink-0 rounded-full" style={{ background: hoveredDot?.color }} aria-hidden="true" />
+                <span className="truncate">{hoveredPet.name}</span>
+                <span className="num ml-auto shrink-0 text-[10px] font-semibold text-ink-dim">{progress(hoveredPet)}</span>
+              </span>
+            ) : null}
+            <span className="font-semibold text-ink-dim">{npcName}</span>
           </span>
         )}
-        {!pet && <p className="absolute left-4 top-4 m-0 rounded-[6px] bg-panel-head/90 px-3 py-2 text-[12px] text-ink-dim">Wybierz peta z listy u góry, żeby zobaczyć jego spawny.</p>}
-        {pet && data && regions.length === 0 && <p className="absolute left-4 top-4 m-0 rounded-[6px] bg-panel-head/90 px-3 py-2 text-[12px] text-ink-dim">Ten pet nie ma znanych spawnów na wbudowanych mapach (Verteron, Altgard).</p>}
-        {region && !hasTiles && <p className="absolute left-4 top-4 m-0 rounded-[6px] bg-panel-head/90 px-3 py-2 text-[12px] text-ink-dim">Brak plików mapy. Wygeneruj je skryptem tools/gen-pet-assets.py albo zainstaluj aplikację z instalatora.</p>}
+        {data && allPets.length > 0 && !pet && families.size === 0 && <p className={note}>Zaznacz przynajmniej jedną rodzinę, żeby zobaczyć jej spawny.</p>}
+        {data && allPets.length > 0 && !pet && families.size > 0 && dots.length === 0 && hasTiles && (
+          <p className={note}>Brak spawnów dla wybranych rodzin na tej mapie{saved.onlyOpen ? ' (pety na MAX są ukryte)' : ''}. Spróbuj drugiej mapy albo więcej rodzin.</p>
+        )}
+        {pet && data && !countIn({ points: data.SPAWN_REGIONS.flatMap((r) => r.points) }) && <p className={note}>Ten pet nie ma znanych spawnów na wbudowanych mapach (Verteron, Altgard).</p>}
+        {region && !hasTiles && <p className={note}>Brak plików mapy. Wygeneruj je skryptem tools/gen-pet-assets.py albo zainstaluj aplikację z instalatora.</p>}
       </div>
       <footer className="border-t border-line px-3 py-1.5 text-[10px] text-ink-mute">
-        Złote kropki to przybliżone, stałe miejsca spawnu (nie pokazują żywych mobów ani twojej pozycji). Przeciągaj, żeby przesunąć, kółko myszy przybliża.
+        Kolor kropki to rodzina peta; najedź na kropkę, żeby zobaczyć peta, jego postęp i moba. To przybliżone, stałe miejsca spawnu (nie żywe moby ani twoja pozycja). Przeciągaj, żeby przesunąć, kółko myszy przybliża.
       </footer>
     </section>
   );
