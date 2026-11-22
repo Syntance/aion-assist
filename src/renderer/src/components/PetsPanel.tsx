@@ -16,12 +16,24 @@ export function RankPips({ rank }: { rank: number | null }) {
   );
 }
 
-export function progressText(p: PetRow): { text: string; tone: string } {
-  if (p.rank === 3) return { text: 'MAX', tone: 'text-good' };
-  if (p.rank === null) return { text: '—', tone: 'text-ink-mute' };
-  if (p.pending) return { text: 'awans oczekuje', tone: 'text-warm' };
-  if (p.souls === null || p.goal === null) return { text: '—', tone: 'text-ink-mute' };
-  return { text: `${p.stale ? '~' : ''}${p.souls}/${p.goal}`, tone: p.stale ? 'text-ink-mute' : 'text-ink' };
+export function progressText(p: PetRow): { text: string; tone: string; pending: boolean } {
+  if (p.rank === 3) return { text: 'MAX', tone: 'text-good', pending: false };
+  if (p.rank === null) return { text: '—', tone: 'text-ink-mute', pending: false };
+  if (p.souls === null || p.goal === null) return { text: '—', tone: 'text-ink-mute', pending: p.pending };
+  // a pending rank-up keeps the amount visible and only adds the arrow (the amount sits at its goal then)
+  return { text: `${p.stale ? '~' : ''}${p.souls}/${p.goal}`, tone: p.pending ? 'text-warm' : p.stale ? 'text-ink-mute' : 'text-ink', pending: p.pending };
+}
+
+/** Small arrow next to the amount: the souls reached the goal and the game has not confirmed the new rank yet. */
+export function PendingMark({ pending }: { pending: boolean }) {
+  if (!pending) return null;
+  return (
+    <span className="grid size-4 shrink-0 place-items-center rounded-full bg-warm/20 text-warm ring-1 ring-warm/50" title="Awans oczekuje: dusze osiągnęły cel, gra jeszcze nie potwierdziła nowej rangi" role="img" aria-label="Awans oczekuje">
+      <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M6 10V2.500M2.800 5.500 6 2.300l3.200 3.200" />
+      </svg>
+    </span>
+  );
 }
 
 export function PinButton({ pet }: { pet: PetRow }) {
@@ -47,7 +59,7 @@ function age(at: number | null, now: number): string {
   return s < 15 ? 'teraz' : s < 90 ? `${s}s temu` : `${Math.round(s / 60)} min temu`;
 }
 
-function PetLine({ pet, mode, hasMap, onMap }: { pet: PetRow; mode: 'recent' | 'nearby'; hasMap: boolean; onMap: (pet: { id: number; name: string }) => void }) {
+function PetLine({ pet, mode, hasMap, reserveMap, onMap }: { pet: PetRow; mode: 'recent' | 'nearby'; hasMap: boolean; reserveMap: boolean; onMap: (pet: { id: number; name: string }) => void }) {
   const prog = progressText(pet);
   const fill = pet.rank === 3 ? 1 : pet.souls !== null && pet.goal ? Math.min(1, pet.souls / pet.goal) : 0;
   const max = pet.rank === 3;
@@ -58,8 +70,8 @@ function PetLine({ pet, mode, hasMap, onMap }: { pet: PetRow; mode: 'recent' | '
         <span className="flex items-center gap-1.5">
           <span className="truncate text-[13px] font-semibold">{pet.name}</span>
         </span>
-        <span className="num flex items-center gap-1.5 text-[10px] text-ink-mute">
-          <span title="Ranga peta">Rank {pet.rank === null ? '?' : pet.rank}</span>
+        <span className="num flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10px] text-ink-mute">
+          <span title="Ranga peta" className="shrink-0">Rank {pet.rank === null ? '?' : pet.rank}</span>
           <FamilyChip family={pet.family} />
           {pet.sessionSouls > 0 && <span className="text-good" title="Dusze zebrane w tej sesji">+{pet.sessionSouls}</span>}
           {mode === 'nearby' && <span>{age(pet.seenAt, Date.now())}</span>}
@@ -71,22 +83,30 @@ function PetLine({ pet, mode, hasMap, onMap }: { pet: PetRow; mode: 'recent' | '
         )}
       </span>
       {max ? (
-        <span className="num rounded-[5px] bg-panel-head px-1.5 py-0.5 text-[11px] font-bold text-good ring-1 ring-line/80">✓ MAX</span>
+        <span className="flex w-[76px] shrink-0 justify-end"><span className="num whitespace-nowrap rounded-[5px] bg-panel-head px-1.5 py-0.5 text-[11px] font-bold text-good ring-1 ring-line/80">✓ MAX</span></span>
       ) : (
-        <span className={`num text-[13px] font-bold ${prog.tone}`} title={pet.remaining !== null && pet.remaining > 0 ? `Brakuje ${pet.remaining} do następnej rangi` : undefined}>
-          {prog.text.replace('/', ' / ')}
+        <span className="flex w-[76px] shrink-0 items-center justify-end gap-1">
+          <PendingMark pending={prog.pending} />
+          <span className={`num whitespace-nowrap text-[13px] font-bold ${prog.tone}`} title={pet.remaining !== null && pet.remaining > 0 ? `Brakuje ${pet.remaining} do następnej rangi` : undefined}>
+            {prog.text.replace('/', ' / ')}
+          </span>
         </span>
       )}
-      {hasMap && (
-        <button
-          type="button"
-          title="Pokaż spawny tego peta na mapie"
-          aria-label={`Mapa: ${pet.name}`}
-          onClick={() => onMap({ id: pet.id, name: pet.name })}
-          className="grid h-5 shrink-0 place-items-center rounded-[4px] px-1.5 text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
-        >
-          Mapa
-        </button>
+      {/* a fixed slot while any pet in the list has a map, so the amount and the pin line up in every row */}
+      {reserveMap && (
+      <span className="flex w-[38px] shrink-0 justify-center">
+        {hasMap && (
+          <button
+            type="button"
+            title="Pokaż spawny tego peta na mapie"
+            aria-label={`Mapa: ${pet.name}`}
+            onClick={() => onMap({ id: pet.id, name: pet.name })}
+            className="grid h-5 w-full place-items-center rounded-[4px] text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
+          >
+            Mapa
+          </button>
+        )}
+      </span>
       )}
       <PinButton pet={pet} />
     </li>
@@ -168,7 +188,7 @@ export function PetsPanel({ snap, onFinder, onMap }: { snap: OverlaySnapshot; on
       ) : (
         <ol className="m-0 flex list-none flex-col gap-[3px] p-[5px]">
           {pets.rows.map((p) => (
-            <PetLine key={p.id} pet={p} mode={mode} hasMap={mapIds?.has(p.id) ?? false} onMap={onMap} />
+            <PetLine key={p.id} pet={p} mode={mode} hasMap={mapIds?.has(p.id) ?? false} reserveMap={pets.rows.some((r) => mapIds?.has(r.id))} onMap={onMap} />
           ))}
         </ol>
       )}

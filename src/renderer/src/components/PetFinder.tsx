@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PetRow } from '@shared/pets';
 import { FamilyChip, PetPortrait } from './PetIcon';
 import { loadSpawns, petsWithMap } from './PetMap';
-import { PinButton, progressText, RankPips } from './PetsPanel';
+import { PendingMark, PinButton, progressText, RankPips } from './PetsPanel';
 
 const FAMILIES = ['Cogni', 'Fera', 'Natura', 'Varian', 'Special'] as const;
 type RankFilter = 'all' | 'none' | '1' | '2' | '3' | 'open' | 'unknown';
@@ -150,19 +150,24 @@ export function PetFinderWindow({ onClose, onMap }: { onClose: () => void; onMap
                       </span>
                       <RankPips rank={p.rank} />
                       {p.remaining !== null && p.remaining > 0 && <span className="text-[10px] text-ink-mute">brakuje {p.remaining}</span>}
-                      <span className={`w-[78px] text-right font-bold ${prog.tone}`}>{prog.text}</span>
+                      <span className="flex w-[76px] shrink-0 items-center justify-end gap-1">
+                        <PendingMark pending={prog.pending} />
+                        <span className={`whitespace-nowrap font-bold ${prog.tone}`}>{prog.text}</span>
+                      </span>
                     </button>
-                    {mapIds?.has(p.id) && (
-                      <button
-                        type="button"
-                        title="Pokaż spawny na mapie"
-                        aria-label={`Mapa: ${p.name}`}
-                        onClick={() => onMap({ id: p.id, name: p.name })}
-                        className="grid h-5 shrink-0 place-items-center rounded-[4px] px-1.5 text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
-                      >
-                        Mapa
-                      </button>
-                    )}
+                    <span className="flex w-[38px] shrink-0 justify-center">
+                      {mapIds?.has(p.id) && (
+                        <button
+                          type="button"
+                          title="Pokaż spawny na mapie"
+                          aria-label={`Mapa: ${p.name}`}
+                          onClick={() => onMap({ id: p.id, name: p.name })}
+                          className="grid h-5 w-full place-items-center rounded-[4px] text-[10px] font-bold text-ink-dim ring-1 ring-line hover:bg-line hover:text-accent"
+                        >
+                          Mapa
+                        </button>
+                      )}
+                    </span>
                     <PinButton pet={p} />
                   </div>
                   {open && (
