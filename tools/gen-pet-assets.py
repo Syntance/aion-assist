@@ -1,4 +1,5 @@
-"""Builds the pet portraits, family crystals and map tiles used by the overlay (src/renderer/src/assets/pets) from a PetTracker checkout.
+"""Builds the pet portraits and family crystals used by the overlay (src/renderer/src/assets/pets) from a PetTracker checkout.
+(The map pictures are built by tools/gen-pet-maps.py.)
 
 Usage: python tools/gen-pet-assets.py <path to PetTracker-main>
 
@@ -26,19 +27,3 @@ for f in (src / 'crystals').glob('*.png'):
     im.thumbnail((48, 48), Image.LANCZOS)
     im.save(out / 'crystals' / f.name, 'PNG', optimize=True)
 print(count, 'portraits written to', out)
-
-# map tiles (Verteron, Altgard): 512 px wide webp, the same size PetTracker decodes them at
-maps = Path('src/renderer/src/assets/maps')
-tiles = 0
-for region in ('verteron', 'altgard'):
-    folder = src / 'maps' / region
-    if not folder.exists():
-        continue
-    (maps / region).mkdir(parents=True, exist_ok=True)
-    for f in sorted(folder.glob('*.jpg')):
-        im = Image.open(f).convert('RGB')
-        if im.width > 512:
-            im = im.resize((512, round(im.height * 512 / im.width)), Image.LANCZOS)
-        im.save(maps / region / (f.stem + '.webp'), 'WEBP', quality=80, method=6)
-        tiles += 1
-print(tiles, 'map tiles written to', maps)
